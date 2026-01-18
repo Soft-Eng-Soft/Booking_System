@@ -332,8 +332,7 @@
             <div class="form-group">
                 <label for="bookingDate">تاريخ الحجز (yyyy-MM-dd) <span style="color:red">*</span></label>
                 <select id="bookingDate" required>
-                    <option value="" disabled selected>اختر التاريخ...</option>
-                    <!-- سيتم التعبئة بواسطة جافا سكربت من 2026-05-01 إلى 2026-05-31 -->
+                    <option value="" disabled selected>جاري تحميل التواريخ...</option>
                 </select>
                 <!-- مؤشر السعة الحي -->
                 <div id="capacityStatus" class="capacity-display" style="display:none;">
@@ -377,16 +376,10 @@
         // ==========================================
         
         // اضبط هذا المتغير إلى "false" بعد وضع كود Firebase الخاص بك
-        const USE_SIMULATION_MODE = false; 
+        const USE_SIMULATION_MODE = true; 
 
         // TODO: استبدل الكود أدناه بالكود الخاص بمشروعك من Firebase Console
-      // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
+       const firebaseConfig = {
   apiKey: "AIzaSyCRyuJulhSxZo9YAfa6jyDzomewt0W9nzM",
   authDomain: "bookingsys-377c4.firebaseapp.com",
   projectId: "bookingsys-377c4",
@@ -394,9 +387,6 @@ const firebaseConfig = {
   messagingSenderId: "214843118228",
   appId: "1:214843118228:web:b342ac832c29d0612f1a81"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
 
         let db;
         if (!USE_SIMULATION_MODE) {
@@ -422,51 +412,73 @@ const app = initializeApp(firebaseConfig);
         let dailyCounts = {}; 
 
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("تم تحميل الصفحة، جاري تهيئة التواريخ...");
             initDates();
         });
 
         function initDates() {
-            dateSelect.innerHTML = '<option value="" disabled selected>اختر التاريخ...</option>';
+            // مسح الخيارات الموجودة
+            dateSelect.innerHTML = '';
             
-            // تحديد النطاق المطلوب: من 1 مايو 2026 إلى 31 مايو 2026
-            const startDate = new Date('2026-05-01');
-            const endDate = new Date('2026-05-31');
+            // إضافة خيار افتراضي
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            defaultOption.textContent = "اختر التاريخ...";
+            dateSelect.appendChild(defaultOption);
 
-            // حلقة تكرار للمرور على كل يوم في النطاق
-            let currentDate = startDate;
+            try {
+                // تعريف النطاق باستخدام الأرقام (أكثر استقراراً)
+                // الشهر يبدأ من 0 في جافا سكريبت (يناير=0، مايو=4)
+                const startYear = 2026;
+                const startMonth = 4; // مايو
+                const startDay = 1;
+                const endDay = 31;
 
-            while (currentDate <= endDate) {
-                const year = currentDate.getFullYear();
-                const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // 01-12
-                const day = String(currentDate.getDate()).padStart(2, '0'); // 01-31
-                
-                // صيغة yyyy-MM-dd
-                const dateString = `${year}-${month}-${day}`;
+                const startDate = new Date(startYear, startMonth, startDay);
+                const endDate = new Date(startYear, startMonth, endDay);
 
-                const option = document.createElement('option');
-                option.value = dateString;
-                option.textContent = dateString; // العرض بنفس الصيغة
-                dateSelect.appendChild(option);
+                // تعيين الوقت إلى منتصف اليوم لتجنب مشاكل التوقيت الصيفي
+                startDate.setHours(12, 0, 0, 0);
+                endDate.setHours(12, 0, 0, 0);
 
-                // الانتقال لليوم التالي
-                currentDate.setDate(currentDate.getDate() + 1);
+                let currentDate = startDate;
+
+                while (currentDate <= endDate) {
+                    const year = currentDate.getFullYear();
+                    const month = String(currentDate.getMonth() + 1).padStart(2, '0'); 
+                    const day = String(currentDate.getDate()).padStart(2, '0'); 
+                    
+                    const dateString = `${year}-${month}-${day}`;
+
+                    const option = document.createElement('option');
+                    option.value = dateString;
+                    option.textContent = dateString; 
+                    dateSelect.appendChild(option);
+
+                    // الانتقال لليوم التالي
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                console.log("تمت إضافة التواريخ بنجاح.");
+            } catch (error) {
+                console.error("خطأ في توليد التواريخ:", error);
+                const errorOption = document.createElement('option');
+                errorOption.textContent = "خطأ في تحميل التواريخ";
+                dateSelect.appendChild(errorOption);
             }
         }
 
         async function getCurrentCount(date, site) {
             if (USE_SIMULATION_MODE) {
-                // في المحاكاة، نرجع أرقام عشوائية لتمثيل السعة
-                // بما أن التواريخ في 2026، لن نتحقق من "غداً"
-                // سنقوم بتوليد عدد عشوائي ثابت لكل تاريخ وموقع لكي لا يتغير عند كل ضغطة في المحاكاة
-                // (تجزئة بسيطة للأداء)
+                // المحاكاة: توليد عدد ثابت لكل تاريخ وموقع لتجنب التغير المستمر
                 const seed = date + site;
                 let hash = 0;
                 for (let i = 0; i < seed.length; i++) {
                     hash = ((hash << 5) - hash) + seed.charCodeAt(i);
                     hash |= 0;
                 }
-                // عدد بين 0 و 105 (لإظهار بعض التواريخ ممتلئة)
-                return Math.abs(hash % 106);
+                return Math.abs(hash % 106); // عدد عشوائي بين 0 و 105
             }
 
             const snapshot = await db.ref('bookings').child(date).once('value');
@@ -531,9 +543,7 @@ const app = initializeApp(firebaseConfig);
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // ============================================
-            // 1. التحقق من ملء جميع الحقول (Validation)
-            // ============================================
+            // التحقق من ملء جميع الحقول
             const requiredFields = [
                 { id: 'marketingSite', name: 'موقع التسويق' },
                 { id: 'marketerName', name: 'اسم المسوق' },
@@ -553,10 +563,6 @@ const app = initializeApp(firebaseConfig);
                     return; 
                 }
             }
-
-            // ============================================
-            // 2. إذا كانت جميع الحقول ممتلئة، نستمر
-            // ============================================
 
             const formData = {
                 site: siteSelect.value,
@@ -582,7 +588,6 @@ const app = initializeApp(firebaseConfig);
             // التحقق من تكرار السيارة
             let carExists = false;
             if (USE_SIMULATION_MODE) {
-                // في المحاكاة، نفترض أن السيارة رقم "123" محجوزة دائماً للاختبار
                 if(formData.carNum === "123") carExists = true; 
             } else {
                 const snapshot = await db.ref('bookings').child(formData.date).once('value');
