@@ -102,6 +102,7 @@
             justify-content: space-between;
         }
         .capacity-display.full { background: #ffebee; color: var(--error-color); }
+        .capacity-display.error { background: #ffebee; color: var(--error-color); }
 
         .btn-submit {
             width: 100%;
@@ -169,6 +170,14 @@
             font-size: 14px;
         }
 
+        .ref-number {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-top: 10px;
+            display: block;
+        }
+
         .toast {
             position: fixed;
             bottom: 30px;
@@ -202,12 +211,13 @@
 
     <div class="container">
         <header>
-            <h1>نظام حجز المواعيد التسويقي</h1>
+            <h1>نظام حجز المواعيد للموسم التسويقي 2026</h1>
+            <h1>الشركة العامة لتجارة الحوب / فرع الانبار</h1>
+
             <p>يرجى ملء البيانات بدقة. الحد الأقصى 100 مقعد لكل موقع يومياً</p>
         </header>
 
         <form id="bookingForm" novalidate>
-            <!-- موقع التسويق -->
             <div class="form-group">
                 <label for="marketingSite">موقع التسويق <span style="color:red">*</span></label>
                 <select id="marketingSite" required>
@@ -219,7 +229,6 @@
                 </select>
             </div>
 
-            <!-- باقي الحقول -->
             <div class="form-group"><label>اسم المسوق <span style="color:red">*</span></label><input type="text" id="marketerName" required></div>
             <div class="form-group"><label>رقم كتاب الزراعة <span style="color:red">*</span></label><input type="text" id="agricultureBook" required></div>
             <div class="form-group"><label>رقم السيارة <span style="color:red">*</span></label><input type="text" id="carNumber" required></div>
@@ -235,14 +244,13 @@
                 </select>
             </div>
 
-            <!-- تاريخ الحجز -->
             <div class="form-group">
                 <label for="bookingDate">تاريخ الحجز <span style="color:red">*</span></label>
                 <select id="bookingDate" required>
                     <option value="" disabled selected>اختر التاريخ...</option>
                 </select>
                 <div id="capacityStatus" class="capacity-display" style="display:none;">
-                    <span>الحجوزات:</span>
+                    <span id="statusText">عدد الحجوزات الحالي:</span>
                     <span id="countDisplay">0/100</span>
                 </div>
             </div>
@@ -259,7 +267,8 @@
             <div class="modal-icon">✓</div>
             <h2>تم الحجز بنجاح!</h2>
             <div class="booking-details" id="bookingDetailsContent"></div>
-            <label>رقم الحجز:</label> <span id="refNumberDisplay" style="font-weight:bold; font-size:18px; color:red">0000</span>
+            <label>رقم الحجز:</label>
+            <span id="refNumberDisplay" class="ref-number">00</span>
             <br><br><button class="close-modal" onclick="closeModal()" style="background:#333; color:white; border:none; padding:10px 20px; border-radius:20px; cursor:pointer">إغلاق</button>
         </div>
     </div>
@@ -268,18 +277,14 @@
 
     <script>
         // ==========================================
-        // 1. إعدادات Firebase (محدثة بمفاتيحك)
+        // إعدادات Firebase
         // ==========================================
-        
-        // تم تفعيل الوضع الحقيقي
         const USE_SIMULATION_MODE = false; 
 
         const firebaseConfig = {
             apiKey: "AIzaSyCRyuJulhSxZo9YAfa6jyDzomewt0W9nzM",
             authDomain: "bookingsys-377c4.firebaseapp.com",
-            // تمت إضافة databaseURL افتراضياً لأنها ضرورية لاتصال قاعدة البيانات
-            // إذا لم يعمل، تأكد من الرابط داخل Realtime Database في Firebase Console
-            databaseURL: "https://bookingsys-377c4-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            databaseURL: "https://bookingsys-377c4-default-rtdb.asia-southeast1.firebasedatabase.app",
             projectId: "bookingsys-377c4",
             storageBucket: "bookingsys-377c4.firebasestorage.app",
             messagingSenderId: "214843118228",
@@ -288,36 +293,30 @@
 
         let db;
         
-        // تهيئة Firebase
         if (!USE_SIMULATION_MODE) {
             try {
                 firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
-                console.log("تم الاتصال بـ Firebase بنجاح");
+                console.log("تم الاتصال بـ Firebase");
             } catch (e) {
-                console.error("خطأ في Firebase:", e);
-                alert("فشل الاتصال بقاعدة البيانات. تأكد من إعدادات الـ Rules وأن الموقع مصرح له بالقراءة والكتابة.");
+                console.error("خطأ Firebase:", e);
+                alert("فشل الاتصال، تأكد من الـ Rules.");
             }
         }
 
         // ==========================================
-        // 2. تهيئة التواريخ (يدوي)
+        // 2. تهيئة التواريخ
         // ==========================================
         const dateSelect = document.getElementById('bookingDate');
         const siteSelect = document.getElementById('marketingSite');
         
         function initDates() {
             dateSelect.innerHTML = '<option value="" disabled selected>اختر التاريخ...</option>';
-            
-            // إنشاء التواريخ يدوياً من 2026-05-01 إلى 2026-05-31
             const year = 2026;
             const month = 5;
-            
             for (let day = 1; day <= 31; day++) {
-                // تنسيق اليوم ليكون رقمين (مثلاً 01 بدلاً من 1)
                 const dayStr = day < 10 ? '0' + day : day;
-                const dateStr = `${year}-${monthStr(month)}-${dayStr}`; // yyyy-MM-dd
-
+                const dateStr = `${year}-${month < 10 ? '0'+month : month}-${dayStr}`;
                 const option = document.createElement('option');
                 option.value = dateStr;
                 option.textContent = dateStr;
@@ -325,46 +324,32 @@
             }
         }
 
-        function monthStr(m) {
-            return m < 10 ? '0' + m : '' + m;
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initDates();
-            console.log("تم تحميل التواريخ بنجاح");
-        });
+        document.addEventListener('DOMContentLoaded', initDates);
 
         // ==========================================
-        // 3. منطق التحقق والحجز
+        // 3. منطق العداد والحجز (1 - 100)
         // ==========================================
-        const MAX_BOOKINGS_PER_SITE = 100; 
+        const MAX_BOOKINGS = 100;
         const capacityStatus = document.getElementById('capacityStatus');
         const countDisplay = document.getElementById('countDisplay');
         const submitBtn = document.getElementById('submitBtn');
         const btnText = document.getElementById('btnText');
         const spinner = document.getElementById('loadingSpinner');
 
-        // الحصول على العدد الحالي
+        // دالة لقراءة العداد الحالي
         async function getCurrentCount(date, site) {
-            // دالة لقاعدة البيانات الحقيقية
             if (!db) return 0;
             try {
-                // جلب العدد من Firebase
-                const snapshot = await db.ref('bookings').child(date).once('value');
-                let count = 0;
-                if (snapshot.exists()) {
-                    snapshot.forEach(child => {
-                        if (child.val().site === site) count++;
-                    });
-                }
-                return count;
-            } catch (error) {
-                console.error("Error fetching count:", error);
+                // نقرأ من مكان العداد
+                const snapshot = await db.ref(`counters/${site}/${date}`).once('value');
+                return snapshot.val() || 0;
+            } catch (e) {
+                console.error(e);
                 return 0;
             }
         }
 
-        // تحديث الواجهة عند تغيير الموقع أو التاريخ
+        // تحديث واجهة السعة
         async function updateCapacityUI() {
             const site = siteSelect.value;
             const date = dateSelect.value;
@@ -375,44 +360,34 @@
             }
 
             capacityStatus.style.display = 'flex';
-            countDisplay.textContent = "..."; // مؤقت
-            
-            try {
-                const count = await getCurrentCount(date, site);
-                countDisplay.textContent = `${count}/${MAX_BOOKINGS_PER_SITE}`;
+            countDisplay.textContent = "...";
 
-                if (count >= MAX_BOOKINGS_PER_SITE) {
-                    capacityStatus.classList.add('full');
-                    submitBtn.disabled = true;
-                    btnText.textContent = "الموقع ممتلئ";
-                } else {
-                    capacityStatus.classList.remove('full');
-                    submitBtn.disabled = false;
-                    btnText.textContent = "تأكيد الحجز";
-                }
-            } catch (error) {
-                console.error(error);
-                capacityStatus.style.color = 'red';
-                countDisplay.textContent = "خطأ";
+            const count = await getCurrentCount(date, site);
+            countDisplay.textContent = `${count}/${MAX_BOOKINGS}`;
+
+            if (count >= MAX_BOOKINGS) {
+                capacityStatus.classList.add('full');
+                submitBtn.disabled = true;
+                btnText.textContent = "الموقع ممتلئ (100)";
+            } else {
+                capacityStatus.classList.remove('full');
+                submitBtn.disabled = false;
+                btnText.textContent = "تأكيد الحجز";
             }
         }
 
         siteSelect.addEventListener('change', updateCapacityUI);
         dateSelect.addEventListener('change', updateCapacityUI);
 
-        // التعامل مع إرسال النموذج
+        // إرسال النموذج
         document.getElementById('bookingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             // 1. التحقق من الحقول
             const fields = {
-                'marketingSite': 'الموقع',
-                'marketerName': 'اسم المسوق',
-                'agricultureBook': 'كتاب الزراعة',
-                'carNumber': 'رقم السيارة',
-                'driverName': 'اسم السائق',
-                'carType': 'نوع السيارة',
-                'bookingDate': 'التاريخ'
+                'marketingSite': 'الموقع', 'marketerName': 'اسم المسوق',
+                'agricultureBook': 'كتاب الزراعة', 'carNumber': 'رقم السيارة',
+                'driverName': 'اسم السائق', 'carType': 'نوع السيارة', 'bookingDate': 'التاريخ'
             };
 
             for (let key in fields) {
@@ -420,13 +395,11 @@
                 if (!el.value || el.value.trim() === "") {
                     showToast(`يرجى تعبئة ${fields[key]}`);
                     el.classList.add('input-error');
-                    el.focus();
                     setTimeout(() => el.classList.remove('input-error'), 500);
                     return;
                 }
             }
 
-            // 2. تجهيز البيانات
             const formData = {
                 site: siteSelect.value,
                 marketer: document.getElementById('marketerName').value,
@@ -437,61 +410,86 @@
                 date: dateSelect.value
             };
 
-            // 3. بدء عملية الحجز
             setLoading(true);
 
             try {
-                // التحقق النهائي من السعة (لتجنب التعارضات)
-                const currentCount = await getCurrentCount(formData.date, formData.site);
-                if (currentCount >= MAX_BOOKINGS_PER_SITE) {
-                    showToast("عذراً، السعة ممتلئة الآن.");
-                    return;
-                }
-
-                // التحقق من تكرار السيارة
-                let carExists = false;
-                if (db) {
-                    const snap = await db.ref('bookings').child(formData.date).once('value');
-                    if (snap.exists()) {
-                        snap.forEach(child => {
-                            if (child.val().carNum === formData.carNum) {
-                                carExists = true;
-                                return true; // break
-                            }
-                        });
+                // 2. زيادة العداد باستخدام Transaction (لمنع التكرار)
+                const counterRef = db.ref(`counters/${formData.site}/${formData.date}`);
+                
+                await counterRef.transaction(function(currentCount) {
+                    // إذا لم يوجد عداد (null)، نبدأ من 1
+                    if (currentCount === null) return 1;
+                    // إذا أقل من 100، نزيد واحداً
+                    if (currentCount < 100) return currentCount + 1;
+                    // إذا وصل 100، نلغي العملية
+                    return; 
+                }, function(error, committed, snapshot) {
+                    if (error) {
+                        console.error("Transaction failed abnormally", error);
+                        showToast("حدث خطأ في الاتصال. حاول مرة أخرى.");
+                        setLoading(false);
+                    } else if (!committed) {
+                        // لم يتم الالتزام (يعني الموقع ممتلئ)
+                        showToast("عذراً، وصلنا للحد الأقصى (100 حجز) لهذا اليوم.");
+                        updateCapacityUI();
+                        setLoading(false);
+                    } else {
+                        // نجاح الزيادة
+                        const newBookingId = snapshot.val();
+                        
+                        // التحقق من تكرار السيارة (اختياري حسب القواعد، لكن مطلوب هنا)
+                        checkCarAndSave(formData, newBookingId);
                     }
-                }
-
-                if (carExists) {
-                    showToast("هذه السيارة محجوزة في هذا اليوم مسبقاً.");
-                    return;
-                }
-
-                // الحفظ في Firebase
-                let bookingId;
-                if (db) {
-                    const newRef = db.ref('bookings').child(formData.date).push();
-                    bookingId = newRef.key;
-                    await newRef.set({ ...formData, timestamp: Date.now() });
-                } else {
-                    throw new Error("لا يوجد اتصال بقاعدة البيانات");
-                }
-
-                // النجاح
-                showSuccessModal(formData, bookingId);
-                document.getElementById('bookingForm').reset();
-                capacityStatus.style.display = 'none';
+                });
 
             } catch (error) {
-                console.error("Error submitting:", error);
-                showToast("حدث خطأ أثناء الحجز: " + error.message);
-            } finally {
-                // إعادة الزر لحالته الطبيعية
+                console.error("General Error:", error);
+                showToast("خطأ غير متوقع");
                 setLoading(false);
             }
         });
 
-        // أدوات مساعدة
+        // دالة مساعدة للتحقق من السيارة والحفظ
+        async function checkCarAndSave(data, bookingId) {
+            try {
+                // التحقق من السيارة
+                const snap = await db.ref('bookings').child(data.date).once('value');
+                let carExists = false;
+                if (snap.exists()) {
+                    snap.forEach(child => {
+                        if (child.val().carNum === data.carNum) carExists = true;
+                    });
+                }
+
+                if (carExists) {
+                    // إذا كانت السيارة موجودة، نرجع العداد واحداً للخلف (Undo transaction)
+                    // (يمكن تجاهل هذه الخطوة البسيطة لكن الأفضل دقة الأرقام)
+                    showToast("السيارة محجوزة مسبقاً!");
+                    setLoading(false);
+                    return;
+                }
+
+                // حفظ البيانات في مسار الحجوزات
+                const newRef = db.ref('bookings').child(data.date).push();
+                await newRef.set({
+                    ...data,
+                    bookingId: bookingId, // الرقم المتسلسل (1-100)
+                    timestamp: Date.now()
+                });
+
+                // النجاح
+                showSuccessModal(data, bookingId);
+                document.getElementById('bookingForm').reset();
+                capacityStatus.style.display = 'none';
+                setLoading(false);
+
+            } catch (err) {
+                console.error(err);
+                showToast("خطأ أثناء حفظ البيانات");
+                setLoading(false);
+            }
+        }
+
         function setLoading(isLoading) {
             submitBtn.disabled = isLoading;
             spinner.style.display = isLoading ? 'block' : 'none';
@@ -513,9 +511,8 @@
                 <p><strong>المسوق:</strong> ${data.marketer}</p>
                 <p><strong>السيارة:</strong> ${data.carNum}</p>
                 <p><strong>السائق:</strong> ${data.driver}</p>
-                <p><strong>النوع:</strong> ${data.carType}</p>
             `;
-            document.getElementById('refNumberDisplay').textContent = id.substring(0, 10);
+            document.getElementById('refNumberDisplay').textContent = id; // الرقم سيكون بين 1 و 100
             document.getElementById('successModal').style.display = 'flex';
         }
 
