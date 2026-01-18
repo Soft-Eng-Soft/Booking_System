@@ -17,7 +17,6 @@
             --disabled-color: #bdbdbd;
             --shadow: 0 4px 6px rgba(0,0,0,0.1);
             --radius: 8px;
-            --whatsapp-color: #25D366;
         }
 
         * {
@@ -175,14 +174,14 @@
         }
 
         .ref-number {
-            font-size: 32px;
-            font-weight: 800;
+            font-size: 40px;
+            font-weight: 900;
             color: var(--primary-color);
-            margin-top: 10px;
+            margin: 10px 0 20px 0;
             display: block;
         }
 
-        /* تنسيق أزرار المودال (طباعة ومشاركة) */
+        /* أزرار المودال */
         .modal-actions {
             display: flex;
             flex-direction: column;
@@ -205,16 +204,11 @@
             transition: transform 0.1s;
         }
         
-        .btn-modal:active { transform: scale(0.98); }
+        .btn-save-pdf { background-color: #333; color: white; }
+        .btn-save-pdf:hover { background-color: #000; }
 
-        .btn-print { background-color: #333; color: white; }
-        .btn-print:hover { background-color: #000; }
-
-        .btn-share { background-color: var(--whatsapp-color); color: white; }
-        .btn-share:hover { background-color: #128C7E; }
-
-        .btn-close { background-color: transparent; color: #666; border: 1px solid #ccc; }
-        .btn-close:hover { background-color: #eee; }
+        .btn-close { background-color: #f0f0f0; color: #555; }
+        .btn-close:hover { background-color: #e0e0e0; }
 
         .toast {
             position: fixed;
@@ -245,49 +239,68 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* ==========================================
-           تنسيق الطباعة (يستخدم عند الحفظ كـ PDF)
+           تنسيق الطباعة (ملف PDF) - صفحة واحدة فقط
            ========================================== */
         @media print {
-            /* إخفاء كل شيء في الصفحة */
-            body * {
-                visibility: hidden;
+            /* إزالة هوامش الورقة الافتراضية لتوفير مساحة */
+            @page {
+                margin: 0;
+                size: auto;
+            }
+
+            /* إخفاء واجهة المستخدم الأصلية */
+            body > * {
+                display: none !important;
             }
 
             /* إظهار طبقة المودال والمحتوى فقط */
-            .modal-overlay, .modal-content, .modal-content * {
-                visibility: visible;
-            }
-
-            /* جعل المودال يملأ الورقة */
             .modal-overlay {
+                display: block !important;
                 position: absolute;
-                left: 0;
                 top: 0;
+                left: 0;
                 width: 100%;
-                height: 100%;
+                height: 100vh;
                 background: white;
-                backdrop-filter: none; /* إلغاء التمويه للطباعة */
+                backdrop-filter: none;
+                z-index: 10000;
             }
 
             .modal-content {
                 position: relative;
-                top: 50%;
-                transform: translateY(-50%);
-                margin: 20px auto;
+                top: 0;
+                left: 0;
+                transform: none;
+                margin: 20px auto; /* توسيط مع هوامش صغيرة */
+                width: 90%;
+                max-width: 600px;
                 box-shadow: none;
-                border: 2px solid #000; /* إطار أسود واضح للطباعة */
-                width: 80%;
+                border: 2px solid #000;
+                padding: 15px; /* تقليل الحشو لضمان ورقة واحدة */
+                color: #000;
             }
 
-            /* إخفاء الأزرار عند الطباعة */
+            /* إخفاء الأزرار بالكامل في الـ PDF */
             .modal-actions {
                 display: none !important;
             }
-            
-            /* إظهار رقم الحجز بشكل كبير جداً */
-            .ref-number {
-                font-size: 40px !important;
-                color: #000 !important;
+
+            /* تقليل حجم الأيقونة لتوفير المساحة */
+            .modal-icon {
+                width: 40px; height: 40px;
+                font-size: 20px;
+                margin: 0 auto 10px;
+            }
+
+            header h1 {
+                font-size: 20px;
+                margin-bottom: 5px;
+            }
+
+            /* ضمان طباعة الألوان بدقة */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
@@ -296,9 +309,10 @@
 
     <div class="container">
         <header>
+           
             <h1>الشركة العامة لتجارة الحبوب/  فرع الانبار</h1>
             <h1>نظام حجز المواعيد للموسم التسويقي 2026</h1>
-            <p>يرجى ملء البيانات بدقة. الحد الأقصى 100 مقعد لكل موقع يومياً</p>
+           <p>يرجى ملء البيانات بدقة. الحد الأقصى 100 مقعد لكل موقع يومياً</p>
         </header>
 
         <form id="bookingForm" novalidate>
@@ -349,25 +363,19 @@
     <div class="modal-overlay" id="successModal">
         <div class="modal-content">
             <div class="modal-icon">✓</div>
-            <h2>تم الحجز بنجاح!</h2>
+            <h2>تم الحجز بنجاح</h2>
             <div class="booking-details" id="bookingDetailsContent"></div>
             <label>رقم الحجز:</label>
             <span id="refNumberDisplay" class="ref-number">00</span>
             
             <div class="modal-actions">
-                <!-- زر الحفظ / الطباعة -->
-                <button class="btn-modal btn-print" onclick="printTicket()">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
-                    حفظ / طباعة (PDF)
-                </button>
-                
-                <!-- زر المشاركة عبر واتساب -->
-                <button class="btn-modal btn-share" onclick="shareTicket()">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                    مشاركة عبر واتساب
+                <!-- زر الحفظ فقط -->
+                <button class="btn-modal btn-save-pdf" onclick="saveAsPDF()">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    حفظ كملف PDF
                 </button>
 
-                <!-- زر الإغلاق -->
+                <!-- زر إغلاق -->
                 <button class="btn-modal btn-close" onclick="closeModal()">
                     إغلاق
                 </button>
@@ -437,8 +445,6 @@
         const submitBtn = document.getElementById('submitBtn');
         const btnText = document.getElementById('btnText');
         const spinner = document.getElementById('loadingSpinner');
-        
-        // متغير لتخزين بيانات الحجز الحالية لاستخدامها في المشاركة
         let currentBookingData = {};
 
         async function getCurrentCount(date, site) {
@@ -564,9 +570,7 @@
                     timestamp: Date.now()
                 });
 
-                // حفظ البيانات في متغير عام لاستخدامها في المشاركة والطباعة
                 currentBookingData = { ...data, bookingId };
-
                 showSuccessModal(data, bookingId);
                 document.getElementById('bookingForm').reset();
                 capacityStatus.style.display = 'none';
@@ -580,23 +584,12 @@
         }
 
         // ==========================================
-        // 4. دوال الحفظ والمشاركة والطباعة
+        // دالة الحفظ (طباعة PDF)
         // ==========================================
-
-        function printTicket() {
+        function saveAsPDF() {
+            // هذه الدالة تفتح نافذة الطباعة
+            // يجب على المستخدم اختيار "Save as PDF" من الوجهة
             window.print();
-        }
-
-        function shareTicket() {
-            // إنشاء نص المشاركة
-            const text = `*تأكيد الحجز*\n\n📍 *الموقع:* ${currentBookingData.site}\n📅 *التاريخ:* ${currentBookingData.date}\n🎟️ *رقم الحجز:* ${currentBookingData.bookingId}\n🚗 *السيارة:* ${currentBookingData.carNum}\n👨‍💼 *السائق:* ${currentBookingData.driver}\n\nشكراً لحجزك!`;
-            
-            // ترميز النص ليكون صالحاً للرابط
-            const encodedText = encodeURIComponent(text);
-            
-            // فتح واتساب
-            const waUrl = `https://wa.me/?text=${encodedText}`;
-            window.open(waUrl, '_blank');
         }
 
         function setLoading(isLoading) {
