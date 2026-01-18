@@ -55,13 +55,14 @@
         .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
         .btn-primary { background: var(--primary-color); }
         .btn-success { background: var(--success-color); }
-        .btn-export { background: #217346; } /* لون Excel */
+        .btn-export { background: #217346; }
 
         @media print {
             .login-screen, .filters, .btn, .tabs, .header { display: none !important; }
             .dashboard-container { box-shadow: none; width: 100%; }
             table { border: 1px solid #000; }
             th, td { border: 1px solid #000; }
+            body { background: white; padding: 0; }
         }
     </style>
 </head>
@@ -91,7 +92,16 @@
         <!-- محتوى الحجوزات -->
         <div id="bookingsTab">
             <div class="filters">
-                <div class="filter-group"><label>التاريخ</label><input type="date" id="filterDate"></div>
+                <!-- فلتر المدة الزمنية -->
+                <div class="filter-group">
+                    <label>من تاريخ</label>
+                    <input type="date" id="filterStartDate">
+                </div>
+                <div class="filter-group">
+                    <label>إلى تاريخ</label>
+                    <input type="date" id="filterEndDate">
+                </div>
+
                 <div class="filter-group"><label>الموقع</label>
                     <select id="filterSite">
                         <option value="">الكل</option>
@@ -101,18 +111,19 @@
                         <option value="مركز تسويق عنه">مركز تسويق عنه</option>
                     </select>
                 </div>
-                <div class="filter-group"><label>المسوق</label><input type="text" id="filterName"></div>
-                <div class="filter-group" style="display:flex; align-items:flex-end;">
+                <div class="filter-group"><label>اسم المسوق</label><input type="text" id="filterName" placeholder="بحث باسم المسوق..."></div>
+                
+                <div class="filter-group" style="display:flex; align-items:flex-end; gap:10px;">
                     <button class="btn btn-primary" onclick="fetchBookings()">بحث</button>
-                </div>
-                <div class="filter-group" style="display:flex; align-items:flex-end; margin-right:auto;">
-                    <button class="btn btn-export" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+                    <button class="btn btn-export" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> Excel</button>
                 </div>
             </div>
 
             <table>
-                <thead><tr><th>الرقم</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>السيارة</th><th>السائق</th></tr></thead>
-                <tbody id="bookingsBody"></tbody>
+                <thead><tr><th>رقم الحجز</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>السيارة</th><th>السائق</th></tr></thead>
+                <tbody id="bookingsBody">
+                    <tr><td colspan="6" style="text-align:center; color:#888;">حدد التواريخ واضغط بحث</td></tr>
+                </tbody>
             </table>
         </div>
 
@@ -157,13 +168,10 @@
         // 1. تسجيل الدخول
         function checkLogin() {
             const pass = document.getElementById('passwordInput').value;
-            if(pass === "123") { // يمكنك تغيير كلمة المرور هنا
+            if(pass === "123") {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('dashboardContent').style.display = 'block';
                 loadConfig();
-                // تعيين تاريخ افتراضي للبحث (اليوم)
-                document.getElementById('filterDate').valueAsDate = new Date();
-                fetchBookings();
             } else {
                 alert("كلمة المرور خاطئة!");
             }
@@ -184,33 +192,97 @@
             event.target.classList.add('active');
         }
 
-        // 3. جلب البيانات
+        // 3. جلب البيانات (محدث لدعم الفترات الزمنية)
         async function fetchBookings() {
-            const date = document.getElementById('filterDate').value;
-            const site = document.getElementById('filterSite').value;
-            const name = document.getElementById('filterName').value.toLowerCase();
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const siteFilter = document.getElementById('filterSite').value;
+            const nameFilter = document.getElementById('filterName').value.toLowerCase();
             const tbody = document.getElementById('bookingsBody');
+
+            if (!startDate) {
+                alert("يرجى اختيار 'من تاريخ' على الأقل");
+                return;
+            }
+
             tbody.innerHTML = '<tr><td colspan="6">جاري التحميل...</td></tr>';
+            let allBookings = [];
 
-            if(!date) return;
+            try {
+                let ref = db.ref('bookings');
 
-            const snap = await db.ref('bookings').child(date).once('value');
-            tbody.innerHTML = '';
-            if(!snap.exists()) { tbody.innerHTML = '<tr><td colspan="6">لا توجد بيانات</td></tr>'; return; }
+                // تحديد نوع الاستعلام: يوم واحد أم فترة
+                if (startDate && endDate) {
+                    // بحث في فترة زمنية
+                    ref = ref.orderByKey().startAt(startDate).endAt(endDate);
+                    const snapshot = await ref.once('value');
 
-            let arr = [];
-            snap.forEach(c => arr.push(c.val()));
-            arr.sort((a,b) => a.bookingId - b.bookingId);
+                    if (snapshot.exists()) {
+                        snapshot.forEach(dateSnapshot => {
+                            const dateKey = dateSnapshot.key; // التاريخ
+                            dateSnapshot.forEach(bookingSnapshot => {
+                                let data = bookingSnapshot.val();
+                                data.date = dateKey; // تعيين التاريخ لكل حجز
+                                allBookings.push(data);
+                            });
+                        });
+                    }
+                } else {
+                    // بحث في يوم واحد
+                    const snapshot = await ref.child(startDate).once('value');
+                    if (snapshot.exists()) {
+                        snapshot.forEach(childSnapshot => {
+                            let data = childSnapshot.val();
+                            data.date = startDate;
+                            allBookings.push(data);
+                        });
+                    }
+                }
 
-            arr.forEach(b => {
-                if(site && b.site !== site) return;
-                if(name && !b.marketer.toLowerCase().includes(name)) return;
-                
-                tbody.innerHTML += `<tr>
-                    <td><b>${b.bookingId}</b></td><td>${b.site}</td><td>${b.date}</td>
-                    <td>${b.marketer}</td><td>${b.carNum}</td><td>${b.driver}</td>
-                </tr>`;
-            });
+                // تفريغ الجدول
+                tbody.innerHTML = '';
+
+                if (allBookings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">لا توجد حجوزات في الفترة المحددة</td></tr>';
+                    return;
+                }
+
+                // الترتيب: حسب التاريخ أولاً، ثم حسب رقم الحجز
+                allBookings.sort((a, b) => {
+                    if (a.date !== b.date) return a.date.localeCompare(b.date);
+                    return a.bookingId - b.bookingId;
+                });
+
+                // تطبيق الفلاتر وعرض البيانات
+                let hasData = false;
+                allBookings.forEach(booking => {
+                    // فلترة الموقع
+                    if (siteFilter && booking.site !== siteFilter) return;
+                    // فلترة الاسم
+                    if (nameFilter && (!booking.marketer || !booking.marketer.toLowerCase().includes(nameFilter))) return;
+
+                    hasData = true;
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td><strong>${booking.bookingId}</strong></td>
+                        <td>${booking.site}</td>
+                        <td>${booking.date}</td>
+                        <td>${booking.marketer || '-'}</td>
+                        <td>${booking.carNum}</td>
+                        <td>${booking.driver}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                if (!hasData) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">لا توجد نتائج تطابق الفلاتر</td></tr>';
+                }
+
+            } catch (error) {
+                console.error("Error:", error);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">حدث خطأ في الاتصال</td></tr>';
+            }
         }
 
         // 4. تصدير CSV
@@ -223,7 +295,7 @@
                     row.push('"' + cols[j].innerText + '"');
                 csv.push(row.join(","));
             }
-            downloadCSV(csv.join("\n"), "حجوزات_التسويق.csv");
+            downloadCSV(csv.join("\n"), "حجوزات.csv");
         }
 
         function downloadCSV(csv, filename) {
@@ -252,7 +324,7 @@
         async function updateLimit() {
             const val = document.getElementById('newLimit').value;
             await db.ref('config/maxBookings').set(Number(val));
-            alert('تم تحديث الحد الأقصى للحجوزات بنجاح');
+            alert('تم تحديث السعة بنجاح');
             loadConfig();
         }
 
@@ -262,7 +334,7 @@
             if(!start || !end) { alert('يرجى تحديد التواريخ'); return; }
             await db.ref('config/startDate').set(start);
             await db.ref('config/endDate').set(end);
-            alert('تم تحديث نطاق التواريخ بنجاح.');
+            alert('تم تحديث التواريخ بنجاح.');
         }
     </script>
 </body>
