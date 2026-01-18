@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الحجوزات</title>
+    <!-- استدعاء مكتبة Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <!-- مكتبة أيقونات (للأزرار) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #1976D2; /* أزرق للوحة التحكم */
+            --primary-hover: #1565C0;
+            --bg-color: #f4f6f8;
+            --text-color: #333;
+            --white: #ffffff;
+            --border-radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--white);
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        .header-title h1 {
+            color: var(--primary-color);
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .header-title a {
+            text-decoration: none;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .btn-back {
+            background: #eee;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        /* منطقة الفلاتر */
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .filter-group input, .filter-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .actions {
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-print { background-color: #333; color: white; }
+        .btn-print:hover { background-color: #000; }
+
+        /* الجدول */
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th { font-weight: 600; }
+        
+        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        tbody tr:hover { background-color: #e3f2fd; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            font-style: italic;
+        }
+
+        /* شارة الموقع */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .badge-silo { background: #e3f2fd; color: #0d47a1; }
+        .badge-majma { background: #fff3e0; color: #e65100; }
+        .badge-khairat { background: #f3e5f5; color: #4a148c; }
+        .badge-anh { background: #e0f2f1; color: #004d40; }
+
+        /* تنسيق الطباعة */
+        @media print {
+            .filters, .actions, .btn-back {
+                display: none !important;
+            }
+            .dashboard-container {
+                box-shadow: none;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            table {
+                font-size: 12px;
+                border: 1px solid #000;
+            }
+            th, td {
+                border: 1px solid #000;
+                padding: 8px;
+            }
+            body {
+                background: white;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <div class="header-section">
+            <div class="header-title">
+                <h1>لوحة مراقبة الحجوزات</h1>
+                <a href="index.html" class="btn-back"><i class="fas fa-plus-circle"></i> عودة للحجز</a>
+            </div>
+            <button class="btn btn-print" onclick="window.print()">
+                <i class="fas fa-print"></i> طباعة التقرير
+            </button>
+        </div>
+
+        <div class="filters">
+            <!-- فلتر التاريخ -->
+            <div class="filter-group">
+                <label>التاريخ</label>
+                <input type="date" id="filterDate">
+            </div>
+
+            <!-- فلتر الموقع -->
+            <div class="filter-group">
+                <label>الموقع</label>
+                <select id="filterSite">
+                    <option value="">جميع المواقع</option>
+                    <option value="سايلو الرمادي">سايلو الرمادي</option>
+                    <option value="مجمع الرمادي الجديد">مجمع الرمادي الجديد</option>
+                    <option value="مركز تسوق الخيرات">مركز تسوق الخيرات</option>
+                    <option value="مركز تسويق عنه">مركز تسويق عنه</option>
+                </select>
+            </div>
+
+            <!-- بحث باسم المسوق (الحجوزات الخاصة) -->
+            <div class="filter-group">
+                <label>اسم المسوق (بحث خاص)</label>
+                <input type="text" id="filterName" placeholder="اكتب الاسم هنا...">
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" onclick="fetchBookings()">
+                    <i class="fas fa-search"></i> بحث
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table id="bookingsTable">
+                <thead>
+                    <tr>
+                        <th>رقم الحجز</th>
+                        <th>الموقع</th>
+                        <th>التاريخ</th>
+                        <th>اسم المسوق</th>
+                        <th>رقم السيارة</th>
+                        <th>السائق</th>
+                        <th>نوع السيارة</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingsBody">
+                    <!-- سيتم تعبئة البيانات هنا -->
+                    <tr><td colspan="7" class="empty-state">اضغط على "بحث" لعرض البيانات</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // إعدادات Firebase (نفسها من الصفحة السابقة)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRyuJulhSxZo9YAfa6jyDzomewt0W9nzM",
+            authDomain: "bookingsys-377c4.firebaseapp.com",
+            databaseURL: "https://bookingsys-377c4-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bookingsys-377c4",
+            storageBucket: "bookingsys-377c4.firebasestorage.app",
+            messagingSenderId: "214843118228",
+            appId: "1:214843118228:web:b342ac832c29d0612f1a81"
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // ==========================================
+        // منطق لوحة التحكم
+        // ==========================================
+
+        // تعيين تاريخ اليوم الافتراضي إلى 1-5-2026 حسب نطاق التطبيق
+        document.addEventListener('DOMContentLoaded', () => {
+            // إذا كنت تريد أن يظهر تاريخ اليوم الحقيقي، استخدم السطر أدناه:
+            // document.getElementById('filterDate').valueAsDate = new Date();
+            
+            // بما أن الحجوزات في 2026، سنقوم بتعيين افتراضي لـ 1 مايو 2026
+            document.getElementById('filterDate').value = "2026-05-01";
+            
+            // تحميل البيانات تلقائياً عند فتح الصفحة
+            fetchBookings();
+        });
+
+        async function fetchBookings() {
+            const date = document.getElementById('filterDate').value;
+            const siteFilter = document.getElementById('filterSite').value;
+            const nameFilter = document.getElementById('filterName').value.trim().toLowerCase();
+            const tbody = document.getElementById('bookingsBody');
+
+            if (!date) {
+                alert("يرجى اختيار التاريخ أولاً");
+                return;
+            }
+
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">جاري جلب البيانات...</td></tr>';
+
+            try {
+                // جلب البيانات من Firebase بناءً على التاريخ المختار
+                // المسار: bookings / date
+                const snapshot = await db.ref('bookings').child(date).once('value');
+                
+                tbody.innerHTML = ''; // تنظيف الجدول
+
+                if (!snapshot.exists()) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">لا توجد حجوزات في هذا التاريخ</td></tr>';
+                    return;
+                }
+
+                let hasData = false;
+                let bookingsArray = [];
+
+                snapshot.forEach((childSnapshot) => {
+                    const data = childSnapshot.val();
+                    // إضافة معرف الحجز للبيانات
+                    data.key = childSnapshot.key; 
+                    bookingsArray.push(data);
+                });
+
+                // فرز البيانات حسب رقم الحجز (bookingId) لترتيب الأرقام 1، 2، 3...
+                bookingsArray.sort((a, b) => a.bookingId - b.bookingId);
+
+                bookingsArray.forEach((booking) => {
+                    // تطبيق الفلاتر
+                    if (siteFilter && booking.site !== siteFilter) return;
+                    if (nameFilter && booking.marketer.toLowerCase().indexOf(nameFilter) === -1) return;
+
+                    hasData = true;
+                    const row = document.createElement('tr');
+                    
+                    // تحديد لون شارة الموقع
+                    let siteClass = 'badge-silo';
+                    if (booking.site.includes('الجديد')) siteClass = 'badge-majma';
+                    if (booking.site.includes('الخيرات')) siteClass = 'badge-khairat';
+                    if (booking.site.includes('عنه')) siteClass = 'badge-anh';
+
+                    row.innerHTML = `
+                        <td><strong>${booking.bookingId}</strong></td>
+                        <td><span class="badge ${siteClass}">${booking.site}</span></td>
+                        <td>${booking.date}</td>
+                        <td>${booking.marketer}</td>
+                        <td>${booking.carNum}</td>
+                        <td>${booking.driver}</td>
+                        <td>${booking.carType}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                if (!hasData) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">لا توجد نتائج تطابق بحثك</td></tr>';
+                }
+
+            } catch (error) {
+                console.error("Error fetching:", error);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state" style="color:red">حدث خطأ في جلب البيانات</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>
