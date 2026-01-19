@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الحجز المسبق ومواعيد التسويق لعام 2026</title>
-
+   <title>نظام الحجز المسبق ومواعيد التسويق لعام 2026</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- مكتبة html2pdf للتحويل PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- مكتبة html2canvas للتحويل لصورة -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <style>
-        /* نفس التنسيقات السابقة */
+        /* التنسيقات الأساسية */
         :root { --primary-color: #2e7d32; --text-color: #333; --error-color: #d32f2f; --disabled-color: #bdbdbd; --shadow: 0 4px 6px rgba(0,0,0,0.1); --radius: 8px; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #e8f5e9; color: var(--text-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: var(--radius); box-shadow: var(--shadow); border-top: 5px solid var(--primary-color); }
+        .container { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: var(--radius); box-shadow: var(--shadow); border-top:5px solid var(--primary-color); }
         header { text-align: center; margin-bottom: 30px; }
         h1 { color: var(--primary-color); margin-bottom: 10px; font-size: 24px; }
         .form-group { margin-bottom: 20px; }
@@ -27,35 +30,58 @@
         .btn-submit { width: 100%; padding: 14px; background-color: var(--primary-color); color: white; border: none; border-radius: var(--radius); font-size: 18px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
         
-        /* تنسيق محتوى المودال */
+        /* تنسيق محتوى التذكرة */
         .modal-content { 
             background: white; 
-            padding: 30px; 
+            padding: 40px; 
             border-radius: var(--radius); 
             width: 90%; 
-            max-width: 450px; 
+            max-width: 500px; 
             text-align: center; 
             color: black;
+            border: 2px solid #2e7d32; /* إطار ملون */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
         
-        .modal-icon { width: 60px; height: 60px; background: #e8f5e9; color: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 20px; }
-        .booking-details { text-align: right; background: #f9f9f9; padding: 15px; border-radius: var(--radius); margin: 20px 0; font-size: 14px; border: 1px solid #ddd; }
-        .ref-number { font-size: 40px; font-weight: 900; color: var(--primary-color); margin: 10px 0 20px 0; display: block; }
+        /* حاوية محتوى التذكرة التي سيتم التقاطها */
+        .ticket-wrapper {
+            background: white;
+        }
         
-        .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-        .btn-modal { width: 100%; padding: 12px; border: none; border-radius: var(--radius); font-size: 16px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-save-pdf { background-color: #d32f2f; color: white; }
-        .btn-close { background-color: #f0f0f0; color: #555; }
+        .modal-icon { width: 80px; height: 80px; background: #e8f5e9; color: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; border: 4px solid var(--primary-color); }
+        .ref-number { font-size: 48px; font-weight: 900; color: #d32f2f; margin: 10px 0 20px 0; display: block; border-bottom: 2px dashed #ccc; padding-bottom: 20px; border-top: 2px dashed #ccc; padding-top: 20px; letter-spacing: 2px; }
+        
+        /* تنسيق التفاصيل بخط كبير */
+        .booking-details { 
+            text-align: right; 
+            background: #fff; 
+            padding: 0; 
+            font-size: 18px; /* خط أكبر */
+            line-height: 1.8;
+        }
+        .booking-details p {
+            border-bottom: 1px solid #eee;
+            padding: 5px 0;
+            color: #444;
+        }
+        .booking-details strong { color: #2e7d32; margin-left: 10px; }
+        
+        /* أزرار التحميل */
+        .modal-actions { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+        .btn-modal { width: 100%; padding: 15px; border: none; border-radius: var(--radius); font-size: 16px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-save-pdf { background-color: #333; color: white; }
+        .btn-save-image { background-color: var(--primary-color); color: white; }
+        .btn-close { background-color: #eee; color: #555; font-weight: normal; }
+        
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="container">
-       <h1>الشركة العامة لتجارة الحبوب/  فرع الانبار</h1>
-            <h1>نظام الحجز المسبق ومواعيد التسويق لعام 2026</h1>                
-            <p>يرجى ملء البيانات بدقة</p>
-        </header>
+      <h1>الشركة العامة لتجارة الحبوب/  فرع الانبار</h1>
+            <h1>نظام الحجز المسبق ومواعيد التسويق لعام 2026</h1>    
+            <p>يرجى ملء البيانات بدقة</p></header>
         <form id="bookingForm" novalidate>
             <div class="form-group">
                 <label for="marketingSite">موقع التسويق <span style="color:red">*</span></label>
@@ -69,13 +95,10 @@
             </div>
             <div class="form-group"><label>اسم المسوق <span style="color:red">*</span></label><input type="text" id="marketerName" required></div>
             <div class="form-group"><label>رقم كتاب الزراعة <span style="color:red">*</span></label><input type="text" id="agricultureBook" required></div>
-            
-            <!-- الحقل الجديد: تاريخ الكتاب -->
             <div class="form-group">
                 <label for="bookDate">تاريخ الكتاب <span style="color:red">*</span></label>
                 <input type="date" id="bookDate" required>
             </div>
-
             <div class="form-group"><label>رقم السيارة <span style="color:red">*</span></label><input type="text" id="carNumber" required></div>
             <div class="form-group"><label>اسم السائق <span style="color:red">*</span></label><input type="text" id="driverName" required></div>
             <div class="form-group">
@@ -88,6 +111,7 @@
                     <option value="قلاب تك">قلاب تك</option>
                     <option value="نساف">نساف</option>
                     <option value="كيا حمل">كيا حمل</option>
+
                 </select>
             </div>
             <div class="form-group">
@@ -102,14 +126,26 @@
     </div>
 
     <div class="modal-overlay" id="successModal">
-        <div class="modal-content" id="ticketContent">
-            <div class="modal-icon">✓</div>
-            <h2>تم الحجز بنجاح</h2>
-            <div class="booking-details" id="bookingDetailsContent"></div>
-            <label>رقم الحجز:</label><span id="refNumberDisplay" class="ref-number">00</span>
+        <div class="modal-content">
+            <!-- الحاوية التي سيتم حفظها/تحويلها -->
+            <div id="ticketElement" class="ticket-wrapper">
+                <div class="modal-icon">✓</div>
+                <h2 style="color:var(--primary-color); margin-bottom:5px;">تم الحجز بنجاح</h2>
+                
+                <!-- رقم الحجز يظهر أولاً بشكل مميز -->
+                <label style="font-size:16px; color:#666; font-weight:normal;">رقم الحجز:</label>
+                <span id="refNumberDisplay" class="ref-number">00</span>
+
+                <div class="booking-details" id="bookingDetailsContent"></div>
+            </div>
+            
+            <!-- الأزرار خارج منطقة الالتقاط (باستخدام data-html2canvas-ignore) -->
             <div class="modal-actions" data-html2canvas-ignore="true">
-                <button class="btn-modal btn-save-pdf" onclick="saveDirectPDF()">
-                    <i class="fas fa-download"></i> تحميل ملف PDF
+                <button class="btn-modal btn-save-image" onclick="saveAsImage()">
+                    <i class="fas fa-image"></i> حفظ كصورة
+                </button>
+                <button class="btn-modal btn-save-pdf" onclick="saveAsPDF()">
+                    <i class="fas fa-file-pdf"></i> حفظ كملف PDF
                 </button>
                 <button class="btn-modal btn-close" onclick="closeModal()">إغلاق</button>
             </div>
@@ -212,8 +248,8 @@
             e.preventDefault();
             const fields = {
                 'marketingSite': 'الموقع', 'marketerName': 'المسوق',
-                'agricultureBook': 'كتاب الزراعة', 'bookDate': 'تاريخ الكتاب', // إضافة الحقل الجديد للتحقق
-                'carNumber': 'السيارة', 'driverName': 'السائق', 
+                'agricultureBook': 'كتاب الزراعة', 'bookDate': 'تاريخ الكتاب',
+                'carNumber': 'السيارة', 'driverName': 'السائق',
                 'carType': 'النوع', 'bookingDate': 'التاريخ'
             };
             for (let key in fields) {
@@ -227,7 +263,7 @@
             }
             const formData = {
                 site: siteSelect.value, marketer: document.getElementById('marketerName').value,
-                agBook: document.getElementById('agricultureBook').value, bookDate: document.getElementById('bookDate').value, // إضافة للحفظ
+                agBook: document.getElementById('agricultureBook').value, bookDate: document.getElementById('bookDate').value,
                 carNum: document.getElementById('carNumber').value,
                 driver: document.getElementById('driverName').value, carType: document.getElementById('carType').value,
                 date: dateSelect.value
@@ -285,7 +321,7 @@
                     });
                     if (foundInHistory) {
                         if(foundDate !== data.date) {
-                            throw new Error(`لا يمكن الحجز: تم حجز هذا الكتاب مع نفس السيارة بتاريخ ${foundDate}. يلزم فاصل 5 أيام.`);
+                            throw new Error(`لا يمكن الحجز: تم حجز هذا الكتاب مع نفس السيارة بتاريخ ${foundDate}. يلزم فاصل5 أيام.`);
                         }
                     }
                 }
@@ -315,8 +351,28 @@
             }
         }
 
-        function saveDirectPDF() {
-            const element = document.getElementById('ticketContent');
+        // ==========================================
+        // دوال التحميل (صورة و PDF)
+        // ==========================================
+        
+        // 1. حفظ كصورة
+        function saveAsImage() {
+            const element = document.getElementById('ticketElement');
+            html2canvas(element, {
+                scale: 2, // جودة عالية جداً
+                backgroundColor: "#ffffff",
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `حجز_${currentBookingData.date}_${currentBookingData.bookingId}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        // 2. حفظ كـ PDF
+        function saveAsPDF() {
+            const element = document.getElementById('ticketElement');
             const opt = {
                 margin:       [10, 10],
                 filename:     `حجز_${currentBookingData.date}_${currentBookingData.bookingId}.pdf`,
@@ -335,7 +391,7 @@
         }
         
         function showSuccessModal(data, id) {
-            // تحويل تاريخ الكتاب من yyyy-MM-dd إلى yyyy/MM/dd للعرض
+            // تحويل تاريخ الكتاب لتنسيق yyyy/MM/dd
             const formattedBookDate = data.bookDate ? data.bookDate.replace(/-/g, '/') : '-';
 
             document.getElementById('bookingDetailsContent').innerHTML = `
