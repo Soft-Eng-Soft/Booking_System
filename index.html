@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام حجز المواعيد التسويقي</title>
+    <title>نظام الحجز المسبق ومواعيد التسويق لعام 2026</title>
+    <!-- استدعاء مكتبة Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <!-- استدعاء مكتبة html2pdf.js للتحويل المباشر -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         /* نفس التنسيقات السابقة */
         :root { --primary-color: #2e7d32; --text-color: #333; --error-color: #d32f2f; --disabled-color: #bdbdbd; --shadow: 0 4px 6px rgba(0,0,0,0.1); --radius: 8px; }
@@ -24,25 +29,38 @@
         .capacity-display.full { background: #ffebee; color: var(--error-color); }
         .btn-submit { width: 100%; padding: 14px; background-color: var(--primary-color); color: white; border: none; border-radius: var(--radius); font-size: 18px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
-        .modal-content { background: white; padding: 30px; border-radius: var(--radius); width: 90%; max-width: 450px; text-align: center; }
+        
+        /* تنسيق محتوى المودال الذي سيتم تحويله لـ PDF */
+        .modal-content { 
+            background: white; 
+            padding: 30px; 
+            border-radius: var(--radius); 
+            width: 90%; 
+            max-width: 450px; 
+            text-align: center; 
+            color: black; /* لون أسود للنصوص في الـ PDF */
+        }
+        
         .modal-icon { width: 60px; height: 60px; background: #e8f5e9; color: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 20px; }
-        .booking-details { text-align: right; background: #f9f9f9; padding: 15px; border-radius: var(--radius); margin: 20px 0; font-size: 14px; border: 1px dashed #ccc; }
+        .booking-details { text-align: right; background: #f9f9f9; padding: 15px; border-radius: var(--radius); margin: 20px 0; font-size: 14px; border: 1px solid #ddd; }
         .ref-number { font-size: 40px; font-weight: 900; color: var(--primary-color); margin: 10px 0 20px 0; display: block; }
+        
         .modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
         .btn-modal { width: 100%; padding: 12px; border: none; border-radius: var(--radius); font-size: 16px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-save-pdf { background-color: #333; color: white; }
+        .btn-save-pdf { background-color: #d32f2f; color: white; } /* أحمر للتحميل */
         .btn-close { background-color: #f0f0f0; color: #555; }
+        
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @media print { @page { margin: 0; size: auto; } body > * { display: none !important; } .modal-overlay { display: block !important; position: absolute; top: 0; left: 0; width: 100%; height: 100vh; background: white; backdrop-filter: none; } .modal-content { position: relative; top: 0; left: 0; transform: none; margin: 20px auto; width: 90%; max-width: 600px; box-shadow: none; border: 2px solid #000; padding: 15px; color: #000; } .modal-actions { display: none !important; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
     </style>
 </head>
 <body>
     <div class="container">
-
-            <h1>الشركة العامة لتجارة الحبوب/ فرع الانبار</h1>
-            <h1>نظام حجز المواعيد للموسم التسويقي 2026</h1>          
-            <p>يرجى ملء البيانات بدقة</p></header>
+        <header>
+            <h1>الشركة العامة لتجارة الحبوب/  فرع الانبار</h1>
+            <h1>نظام الحجز المسبق ومواعيد التسويق لعام 2026</h1>           
+            <p>يرجى ملء البيانات بدقة</p>
+        </header>
         <form id="bookingForm" novalidate>
             <div class="form-group">
                 <label for="marketingSite">موقع التسويق <span style="color:red">*</span></label>
@@ -61,11 +79,14 @@
             <div class="form-group">
                 <label for="carType">نوع السيارة <span style="color:red">*</span></label>
                 <select id="carType" required>
-                    <option value="" disabled selected>اختر النوع...</option>
-                    <option value="شاحنة صغيرة">شاحنة صغيرة</option>
-                    <option value="شاحنة متوسطة">شاحنة متوسطة</option>
-                    <option value="شاحنة كبيرة">شاحنة كبيرة</option>
+                    <option value="" disabled selected>اختر النوع...</option>                   
                     <option value="تريلا">تريلا</option>
+                    <option value="تريلا - قاطرة ومقطورة">تريلا - قاطرة ومقطورة</option>
+                    <option value="قلاب سكس">قلاب سكس</option>
+                    <option value="قلاب تك">قلاب تك</option>
+                    <option value="نساف">نساف</option>
+                    <option value="كيا حمل">كيا حمل</option>
+
                 </select>
             </div>
             <div class="form-group">
@@ -80,13 +101,18 @@
     </div>
 
     <div class="modal-overlay" id="successModal">
-        <div class="modal-content">
+        <!-- تحديد ID خاص ليتم تحويله لـ PDF -->
+        <div class="modal-content" id="ticketContent">
             <div class="modal-icon">✓</div>
             <h2>تم الحجز بنجاح</h2>
             <div class="booking-details" id="bookingDetailsContent"></div>
             <label>رقم الحجز:</label><span id="refNumberDisplay" class="ref-number">00</span>
-            <div class="modal-actions">
-                <button class="btn-modal btn-save-pdf" onclick="saveAsPDF()">حفظ كملف PDF</button>
+            
+            <!-- الأزرار تظهر للمستخدم ولكن لن يتم تحويلها للـ PDF -->
+            <div class="modal-actions" data-html2canvas-ignore="true">
+                <button class="btn-modal btn-save-pdf" onclick="saveDirectPDF()">
+                    <i class="fas fa-download"></i> تحميل ملف PDF
+                </button>
                 <button class="btn-modal btn-close" onclick="closeModal()">إغلاق</button>
             </div>
         </div>
@@ -104,47 +130,35 @@
         };
         const db = firebase.initializeApp(firebaseConfig).database();
 
-        // متغيرات ديناميكية تُقرأ من الإعدادات
         let MAX_BOOKINGS = 100;
         const dateSelect = document.getElementById('bookingDate');
         const siteSelect = document.getElementById('marketingSite');
         let currentBookingData = {};
 
-        // تحميل الإعدادات عند فتح الصفحة
         document.addEventListener('DOMContentLoaded', async () => {
             await loadSystemConfig();
             initDates();
         });
 
-        // قراءة الإعدادات من Firebase (السعة والتواريخ)
         async function loadSystemConfig() {
             const limitSnap = await db.ref('config/maxBookings').once('value');
             if(limitSnap.exists()) MAX_BOOKINGS = limitSnap.val();
         }
 
-        // تهيئة التواريخ ديناميكياً
         async function initDates() {
             dateSelect.innerHTML = '<option value="" disabled selected>اختر التاريخ...</option>';
-            
-            // قراءة نطاق التواريخ من الإعدادات، أو استخدام القيم الافتراضية إذا لم يتم تعيينها
             const startSnap = await db.ref('config/startDate').once('value');
             const endSnap = await db.ref('config/endDate').once('value');
-
-            // قيم افتراضية إذا لم يتم التحديث من اللوحة
             const startDateStr = startSnap.exists() ? startSnap.val() : "2026-05-01";
             const endDateStr = endSnap.exists() ? endSnap.val() : "2026-05-31";
-
             const startDate = new Date(startDateStr);
             const endDate = new Date(endDateStr);
-
-            // حلقة التاريخ
             let currentDate = startDate;
             while (currentDate <= endDate) {
                 const year = currentDate.getFullYear();
                 const month = String(currentDate.getMonth() + 1).padStart(2, '0');
                 const day = String(currentDate.getDate()).padStart(2, '0');
                 const dateStr = `${year}-${month}-${day}`;
-                
                 const option = document.createElement('option');
                 option.value = dateStr;
                 option.textContent = dateStr;
@@ -164,13 +178,11 @@
             const site = siteSelect.value;
             const date = dateSelect.value;
             if (!site || !date) { document.getElementById('capacityStatus').style.display = 'none'; return; }
-            
             const statusDiv = document.getElementById('capacityStatus');
             statusDiv.style.display = 'flex';
             document.getElementById('countDisplay').textContent = "...";
             const count = await getCurrentCount(date, site);
             document.getElementById('countDisplay').textContent = `${count}/${MAX_BOOKINGS}`;
-
             const btn = document.getElementById('submitBtn');
             if (count >= MAX_BOOKINGS) {
                 statusDiv.classList.add('full');
@@ -187,6 +199,16 @@
 
         siteSelect.addEventListener('change', updateCapacityUI);
         dateSelect.addEventListener('change', updateCapacityUI);
+
+        function getPastDates(dateStr, daysBack) {
+            const dates = [];
+            let d = new Date(dateStr);
+            for(let i=0; i<daysBack; i++) {
+                dates.push(d.toISOString().split('T')[0]);
+                d.setDate(d.getDate() - 1);
+            }
+            return dates;
+        }
 
         document.getElementById('bookingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -211,22 +233,64 @@
                 date: dateSelect.value
             };
             setLoading(true);
+
             try {
                 const counterRef = db.ref(`counters/${formData.site}/${formData.date}`);
                 await counterRef.transaction(function(currentCount) {
                     if (currentCount === null) return 1;
-                    if (currentCount < MAX_BOOKINGS) return currentCount + 1; // استخدام السعة المتغيرة
+                    if (currentCount < MAX_BOOKINGS) return currentCount + 1;
                     return; 
-                }, function(error, committed, snapshot) {
+                }, async function(error, committed, snapshot) {
                     if (error || !committed) {
                         if(!error) showToast("الموقع ممتلئ للحد الأقصى!");
                         setLoading(false);
                     } else {
-                        checkCarAndSave(formData, snapshot.val());
+                        const newBookingId = snapshot.val();
+                        await validateAdvancedRules(formData, newBookingId);
+                        checkCarAndSave(formData, newBookingId);
                     }
                 });
             } catch (error) { setLoading(false); }
         });
+
+        async function validateAdvancedRules(data, bookingId) {
+            const daySnap = await db.ref('bookings').child(data.date).once('value');
+            if (daySnap.exists()) {
+                let agBookExistsInOtherSite = false;
+                daySnap.forEach(childSnapshot => {
+                    const record = childSnapshot.val();
+                    if (record.agBook === data.agBook) {
+                        agBookExistsInOtherSite = true;
+                    }
+                });
+                if (agBookExistsInOtherSite) {
+                    throw new Error(`عذراً، رقم كتاب الزراعة (${data.agBook}) مسجل بالفعل في موقع آخر ليوم ${data.date}.`);
+                }
+            }
+            const datesToCheck = getPastDates(data.date, 5);
+            const promises = datesToCheck.map(d => db.ref('bookings').child(d).once('value'));
+            const snapshots = await Promise.all(promises);
+            for (let i = 0; i < snapshots.length; i++) {
+                const snap = snapshots[i];
+                if (snap.exists()) {
+                    let foundInHistory = false;
+                    let foundDate = "";
+                    snap.forEach(childSnapshot => {
+                        const val = childSnapshot.val();
+                        if (val.agBook === data.agBook && val.carNum === data.carNum) {
+                            foundInHistory = true;
+                            foundDate = datesToCheck[i];
+                            return true;
+                        }
+                    });
+                    if (foundInHistory) {
+                        if(foundDate !== data.date) {
+                            throw new Error(`لا يمكن الحجز: تم حجز هذا الكتاب مع نفس السيارة بتاريخ ${foundDate}. يلزم فاصل 5 أيام.`);
+                        }
+                    }
+                }
+            }
+        }
 
         async function checkCarAndSave(data, bookingId) {
             try {
@@ -244,11 +308,34 @@
                 document.getElementById('bookingForm').reset();
                 document.getElementById('capacityStatus').style.display = 'none';
                 setLoading(false);
-            } catch (err) { setLoading(false); }
+            } catch (err) {
+                console.error(err);
+                alert(err.message);
+                setLoading(false);
+            }
         }
 
-        function saveAsPDF() { window.print(); }
-        function showToast(msg) { alert(msg); } // استخدام Alert البسيط للتجاوب مع باقي الكود أو يمكن تعديلها
+        // ==========================================
+        // دالة حفظ ملف PDF مباشر (دون نافذة طباعة)
+        // ==========================================
+        function saveDirectPDF() {
+            // العنصر الذي سيتم تحويله
+            const element = document.getElementById('ticketContent');
+            
+            // إعدادات الملف
+            const opt = {
+                margin:       [10, 10], // هوامش [علوي/سفلي, يمين/يسار]
+                filename:     `حجز_${currentBookingData.date}_${currentBookingData.bookingId}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 }, // جودة عالية
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // تنفيذ التحويل والحفظ
+            html2pdf().set(opt).from(element).save();
+        }
+
+        function showToast(msg) { alert(msg); }
         function setLoading(isLoading) {
             document.getElementById('submitBtn').disabled = isLoading;
             document.getElementById('loadingSpinner').style.display = isLoading ? 'block' : 'none';
