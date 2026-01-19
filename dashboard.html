@@ -3,136 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم والإدارة المتقدمة</title>
+    <title>لوحة التحكم - إدارة المواقع المتقدمة</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary-color: #1976D2; --danger-color: #d32f2f; --success-color: #2e7d32; --bg-color: #f4f6f8; --export-color: #217346; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--bg-color); color: #333; padding: 20px; }
+        :root { --primary-color: #1976D2; --danger-color: #d32f2f; --success-color: #2e7d32; --bg-color: #f4f6f8; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-color); padding: 20px; }
 
-        .login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .login-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); text-align: center; width: 300px; }
-        .login-box input { width: 100%; padding: 10px; margin: 20px 0; border: 1px solid #ccc; border-radius: 5px; text-align: center; }
-
-        .dashboard-container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        /* تنسيق اللوحة */
+        .dashboard-container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { padding: 10px 20px; border: none; background: #eee; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        .tab-btn { padding: 12px 25px; border: none; background: #e0e0e0; cursor: pointer; border-radius: 6px; font-weight: bold; transition: 0.3s; }
         .tab-btn.active { background: var(--primary-color); color: white; }
 
-        .filters, .settings-panel { background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
-        .filter-group { margin-bottom: 15px; flex: 1; min-width: 200px; }
-        .filter-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
-        .filter-group input, .filter-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        /* النماذج والجداول */
+        .card { background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #444; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
 
-        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
-        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #ddd; }
-        th { background: var(--primary-color); color: white; }
-        tr:hover { background: #e3f2fd; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { padding: 12px; text-align: right; border: 1px solid #dee2e6; }
+        th { background: #444; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
 
-        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; }
         
-        /* تنبيه النجاح */
-        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 5px; padding: 16px; position: fixed; z-index: 10000; left: 50%; transform: translateX(-50%); bottom: 30px; }
-        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        /* إعدادات الطباعة الخاصة بالـ PDF */
+        #pdfContent { padding: 20px; background: white; }
+        .pdf-header { text-align: center; margin-bottom: 20px; display: none; } /* تظهر فقط في PDF */
+
+        @media print {
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body>
 
-    <div id="toast">تم حفظ الإعدادات بنجاح</div>
-
-    <div class="login-screen" id="loginScreen">
-        <div class="login-box">
-            <h2><i class="fas fa-lock"></i> دخول المسؤول</h2>
-            <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور">
-            <button class="btn" style="background:var(--primary-color); width:100%" onclick="checkLogin()">دخول</button>
-        </div>
-    </div>
-
-    <div class="dashboard-container" id="dashboardContent" style="display:none;">
-        <div class="header">
-            <h1>لوحة إدارة المواقع والحجوزات</h1>
-            <a href="index.html" class="btn" style="background:#666;">العودة للحجز</a>
+    <div class="dashboard-container" id="mainContent">
+        <div class="header no-print">
+            <h1><i class="fas fa-tasks"></i> إدارة منظومة الحجز 2026</h1>
+            <a href="index.html" class="btn" style="background:#666;">العودة لصفحة الحجز</a>
         </div>
 
-        <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('bookings')">عرض الحجوزات</button>
+        <div class="tabs no-print">
+            <button class="tab-btn active" onclick="showTab('bookings')">سجل الحجوزات</button>
             <button class="tab-btn" onclick="showTab('settings')">إعدادات المواقع</button>
         </div>
 
         <div id="bookingsTab">
-            <div class="filters" style="display: flex; flex-wrap: wrap; gap: 15px;">
-                <div class="filter-group"><label>من تاريخ</label><input type="date" id="filterStartDate"></div>
-                <div class="filter-group"><label>إلى تاريخ</label><input type="date" id="filterEndDate"></div>
-                <div class="filter-group">
-                    <label>الموقع</label>
-                    <select id="filterSite">
-                        <option value="">الكل</option>
+            <div class="card no-print">
+                <div class="grid-3">
+                    <div class="form-group"><label>من تاريخ</label><input type="date" id="filterStart"></div>
+                    <div class="form-group"><label>إلى تاريخ</label><input type="date" id="filterEnd"></div>
+                    <div class="form-group">
+                        <label>الموقع</label>
+                        <select id="filterSite">
+                            <option value="">كل المواقع</option>
+                            <option value="سايلو الرمادي">سايلو الرمادي</option>
+                            <option value="مجمع الرمادي الجديد">مجمع الرمادي الجديد</option>
+                            <option value="مركز تسوق الخيرات">مركز تسوق الخيرات</option>
+                            <option value="مركز تسويق عنه">مركز تسويق عنه</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn" style="background:var(--primary-color);" onclick="fetchBookings()"><i class="fas fa-search"></i> بحث وتحديث</button>
+            </div>
+
+            <div class="no-print" style="margin-bottom: 10px; text-align: left;">
+                <button class="btn" style="background:var(--danger-color);" onclick="exportDetailedPDF()"><i class="fas fa-file-pdf"></i> تحميل التقرير التفصيلي PDF</button>
+            </div>
+
+            <div id="printableArea">
+                <div class="pdf-header" id="pdfHeader">
+                    <h2>تقرير حجوزات التسويق لعام 2026</h2>
+                    <p id="pdfDateRange"></p>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الحجز</th>
+                            <th>الموقع</th>
+                            <th>التاريخ</th>
+                            <th>المسوق</th>
+                            <th>رقم الكتاب</th>
+                            <th>السيارة</th>
+                            <th>السائق</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookingsBody">
+                        <tr><td colspan="7" style="text-align:center;">يرجى اختيار التاريخ والضغط على بحث</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="settingsTab" style="display:none;">
+            <div class="card">
+                <h3><i class="fas fa-cogs"></i> تخصيص إعدادات الموقع</h3>
+                <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">يمكنك تحديد سعة مختلفة ونطاق تاريخ لكل موقع بشكل مستقل.</p>
+                
+                <div class="form-group" style="max-width: 300px;">
+                    <label>اختر الموقع المُراد تعديله:</label>
+                    <select id="settingSiteSelector" onchange="loadSiteConfig(this.value)">
+                        <option value="">-- اختر موقعاً --</option>
                         <option value="سايلو الرمادي">سايلو الرمادي</option>
                         <option value="مجمع الرمادي الجديد">مجمع الرمادي الجديد</option>
                         <option value="مركز تسوق الخيرات">مركز تسوق الخيرات</option>
                         <option value="مركز تسويق عنه">مركز تسويق عنه</option>
                     </select>
                 </div>
-                <div class="filter-group" style="display:flex; align-items:flex-end;">
-                    <button class="btn" style="background:var(--primary-color); height:42px;" onclick="fetchBookings()">بحث</button>
+
+                <div id="configForm" style="display:none; border-top: 1px solid #ddd; padding-top: 20px;">
+                    <div class="grid-3">
+                        <div class="form-group"><label>الحد الأقصى اليومي (السعة)</label><input type="number" id="mLimit"></div>
+                        <div class="form-group"><label>تاريخ البدء</label><input type="date" id="mStart"></div>
+                        <div class="form-group"><label>تاريخ الانتهاء</label><input type="date" id="mEnd"></div>
+                    </div>
+                    <button class="btn" style="background:var(--success-color);" onclick="saveConfig()"><i class="fas fa-check"></i> حفظ الإعدادات للموقع</button>
                 </div>
-            </div>
-            <div id="printableArea">
-                <table>
-                    <thead><tr><th>رقم الحجز</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>رقم الكتاب</th><th>السيارة</th></tr></thead>
-                    <tbody id="bookingsBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="settingsTab" class="settings-panel" style="display:none;">
-            <h2 style="margin-bottom: 20px; color: var(--primary-color);">تخصيص إعدادات كل موقع</h2>
-            
-            <div class="filter-group" style="max-width: 400px;">
-                <label>اختر الموقع لتعديل إعداداته:</label>
-                <select id="settingSiteSelector" onchange="loadSiteConfig(this.value)">
-                    <option value="">-- اختر موقعاً --</option>
-                    <option value="سايلو الرمادي">سايلو الرمادي</option>
-                    <option value="مجمع الرمادي الجديد">مجمع الرمادي الجديد</option>
-                    <option value="مركز تسوق الخيرات">مركز تسوق الخيرات</option>
-                    <option value="مركز تسويق عنه">مركز تسويق عنه</option>
-                </select>
-            </div>
-
-            <div id="siteConfigForm" style="display: none; border-top: 2px solid #ddd; padding-top: 20px;">
-                <h3 id="selectedSiteTitle" style="margin-bottom: 15px;"></h3>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div class="filter-group">
-                        <label>الحد الأقصى اليومي (السعة)</label>
-                        <input type="number" id="siteMaxBookings" placeholder="مثلاً 100">
-                    </div>
-                    <div></div> <div class="filter-group">
-                        <label>تاريخ بدء الحجز</label>
-                        <input type="date" id="siteStartDate">
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label>تاريخ انتهاء الحجز</label>
-                        <input type="date" id="siteEndDate">
-                    </div>
-                </div>
-
-                <button class="btn" style="background:var(--success-color); padding: 15px 30px;" onclick="saveSiteConfig()">
-                    <i class="fas fa-save"></i> حفظ إعدادات الموقع
-                </button>
             </div>
         </div>
     </div>
 
     <script>
-        // نفس إعدادات Firebase الخاصة بك
+        // تكوين Firebase الخاص بك
         const firebaseConfig = {
             apiKey: "AIzaSyCRyuJulhSxZo9YAfa6jyDzomewt0W9nzM",
             authDomain: "bookingsys-377c4.firebaseapp.com",
@@ -145,96 +145,85 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function checkLogin() {
-            if(document.getElementById('passwordInput').value === "123") {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('dashboardContent').style.display = 'block';
-            } else { alert("خطأ!"); }
-        }
-
-        function showTab(tabName) {
+        function showTab(t) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('bookingsTab').style.display = tabName === 'bookings' ? 'block' : 'none';
-            document.getElementById('settingsTab').style.display = tabName === 'settings' ? 'block' : 'none';
             event.target.classList.add('active');
+            document.getElementById('bookingsTab').style.display = (t === 'bookings') ? 'block' : 'none';
+            document.getElementById('settingsTab').style.display = (t === 'settings') ? 'block' : 'none';
         }
 
-        // --- وظائف الإعدادات الجديدة ---
-
-        async function loadSiteConfig(siteName) {
-            if (!siteName) {
-                document.getElementById('siteConfigForm').style.display = 'none';
-                return;
-            }
-
-            document.getElementById('selectedSiteTitle').innerText = "تعديل إعدادات: " + siteName;
-            document.getElementById('siteConfigForm').style.display = 'block';
-
-            // جلب البيانات من المسار الجديد: site_configs/اسم_الموقع
-            const snapshot = await db.ref('site_configs/' + siteName).once('value');
-            const config = snapshot.val() || {};
-
-            document.getElementById('siteMaxBookings').value = config.maxBookings || 100;
-            document.getElementById('siteStartDate').value = config.startDate || "";
-            document.getElementById('siteEndDate').value = config.endDate || "";
+        // جلب إعدادات موقع معين
+        async function loadSiteConfig(site) {
+            if(!site) { document.getElementById('configForm').style.display='none'; return; }
+            const snap = await db.ref('site_configs/' + site).once('value');
+            const conf = snap.val() || { maxBookings: 100, startDate: '', endDate: '' };
+            document.getElementById('mLimit').value = conf.maxBookings;
+            document.getElementById('mStart').value = conf.startDate;
+            document.getElementById('mEnd').value = conf.endDate;
+            document.getElementById('configForm').style.display = 'block';
         }
 
-        async function saveSiteConfig() {
-            const siteName = document.getElementById('settingSiteSelector').value;
-            const config = {
-                maxBookings: Number(document.getElementById('siteMaxBookings').value),
-                startDate: document.getElementById('siteStartDate').value,
-                endDate: document.getElementById('siteEndDate').value
+        // حفظ إعدادات الموقع
+        async function saveConfig() {
+            const site = document.getElementById('settingSiteSelector').value;
+            const data = {
+                maxBookings: parseInt(document.getElementById('mLimit').value),
+                startDate: document.getElementById('mStart').value,
+                endDate: document.getElementById('mEnd').value
+            };
+            await db.ref('site_configs/' + site).set(data);
+            alert("تم تحديث إعدادات " + site + " بنجاح.");
+        }
+
+        // جلب الحجوزات
+        async function fetchBookings() {
+            const start = document.getElementById('filterStart').value;
+            const end = document.getElementById('filterEnd').value;
+            const site = document.getElementById('filterSite').value;
+            const tbody = document.getElementById('bookingsBody');
+
+            if(!start) { alert("حدد تاريخ البدء"); return; }
+            tbody.innerHTML = '<tr><td colspan="7">جاري البحث...</td></tr>';
+
+            const snap = await db.ref('bookings').orderByKey().startAt(start).endAt(end || start).once('value');
+            tbody.innerHTML = '';
+            
+            let hasData = false;
+            snap.forEach(dateSnap => {
+                dateSnap.forEach(bookingSnap => {
+                    const b = bookingSnap.val();
+                    if(site && b.site !== site) return;
+                    hasData = true;
+                    tbody.innerHTML += `<tr>
+                        <td><b>${b.bookingId}</b></td>
+                        <td>${b.site} [cite: 5]</td>
+                        <td>${dateSnap.key} [cite: 6]</td>
+                        <td>${b.marketer} </td>
+                        <td>${b.agBook || '-'}</td>
+                        <td>${b.carNum || '-'}</td>
+                        <td>${b.driver || '-'}</td>
+                    </tr>`;
+                });
+            });
+            if(!hasData) tbody.innerHTML = '<tr><td colspan="7">لا توجد حجوزات تطابق البحث</td></tr>';
+        }
+
+        // وظيفة PDF المتقدمة
+        function exportDetailedPDF() {
+            const element = document.getElementById('printableArea');
+            const header = document.getElementById('pdfHeader');
+            header.style.display = 'block'; // إظهار هيدر التقرير في الـ PDF
+
+            const opt = {
+                margin: 0.3,
+                filename: 'تقرير_الحجوزات_2026.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
             };
 
-            if (!config.startDate || !config.endDate) {
-                alert("يرجى تحديد التواريخ");
-                return;
-            }
-
-            try {
-                await db.ref('site_configs/' + siteName).set(config);
-                showToast();
-            } catch (e) {
-                alert("خطأ في الحفظ");
-            }
-        }
-
-        function showToast() {
-            const t = document.getElementById("toast");
-            t.className = "show";
-            setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
-        }
-
-        // --- وظيفة الجلب (نفس منطقك السابق مع تحسين بسيط) ---
-        async function fetchBookings() {
-            const startDate = document.getElementById('filterStartDate').value;
-            const endDate = document.getElementById('filterEndDate').value;
-            const siteFilter = document.getElementById('filterSite').value;
-            const tbody = document.getElementById('bookingsBody');
-            
-            if (!startDate) { alert("حدد التاريخ"); return; }
-            tbody.innerHTML = 'جاري التحميل...';
-
-            let ref = db.ref('bookings');
-            const snapshot = await ref.orderByKey().startAt(startDate).endAt(endDate || startDate).once('value');
-            
-            tbody.innerHTML = '';
-            snapshot.forEach(dateSnap => {
-                dateSnap.forEach(bookingSnap => {
-                    const data = bookingSnap.val();
-                    if (siteFilter && data.site !== siteFilter) return;
-                    
-                    const row = `<tr>
-                        <td>${data.bookingId}</td>
-                        <td>${data.site}</td>
-                        <td>${dateSnap.key}</td>
-                        <td>${data.marketer}</td>
-                        <td>${data.agBook}</td>
-                        <td>${data.carNum}</td>
-                    </tr>`;
-                    tbody.innerHTML += row;
-                });
+            html2pdf().set(opt).from(element).save().then(() => {
+                header.style.display = 'none'; // إخفاؤه مرة أخرى من الشاشة
             });
         }
     </script>
