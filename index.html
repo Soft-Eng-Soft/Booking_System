@@ -1,6 +1,3 @@
-أقوم بكتابة ملف HTML كامل مع جميع التعديلات المطلوبة:
-
-```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -17,7 +14,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* التنسيقات الأساسية */
         :root { 
             --primary-color: #2e7d32; 
             --text-color: #333; 
@@ -150,7 +146,6 @@
             backdrop-filter: blur(3px); 
         }
         
-        /* تنسيق محتوى التذكرة */
         .modal-content { 
             background: white; 
             padding: 40px; 
@@ -159,7 +154,7 @@
             max-width: 500px; 
             text-align: center; 
             color: black;
-            border: 2px solid #2e7d32; /* إطار ملون */
+            border: 2px solid #2e7d32;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             position: relative;
         }
@@ -191,12 +186,11 @@
             letter-spacing: 2px; 
         }
         
-        /* تنسيق التفاصيل بخط كبير */
         .booking-details { 
             text-align: right; 
             background: #fff; 
             padding: 0; 
-            font-size: 18px; /* خط أكبر */
+            font-size: 18px;
             line-height: 1.8;
         }
         
@@ -211,7 +205,6 @@
             margin-left: 10px; 
         }
         
-        /* أزرار التحميل */
         .modal-actions { 
             display: flex; 
             flex-direction: column; 
@@ -264,13 +257,6 @@
         @keyframes spin { 
             0% { transform: rotate(0deg); } 
             100% { transform: rotate(360deg); } 
-        }
-        
-        /* تحسينات للطباعة والتحويل PDF */
-        @media print {
-            .modal-actions, .btn-close {
-                display: none !important;
-            }
         }
         
         .modal-content * {
@@ -356,12 +342,10 @@
     </div>
 
     <div class="modal-overlay" id="successModal">
-        <!-- محتوى المودال الكامل (سيتم التقاطه كصورة و pdf) -->
         <div class="modal-content">
             <div class="modal-icon">✓</div>
             <h2 style="color:var(--primary-color); margin-bottom:5px;">تم الحجز بنجاح</h2>
             
-            <!-- رقم الحجز يظهر أولاً بشكل مميز -->
             <label style="font-size:16px; color:#666; font-weight:normal;">رقم الحجز:</label>
             <span id="refNumberDisplay" class="ref-number">00</span>
 
@@ -369,7 +353,6 @@
                 <!-- سيتم تعبئة التفاصيل هنا بواسطة JavaScript -->
             </div>
             
-            <!-- الأزرار تظهر للمستخدم ولكن لن يتم تحويلها للـ PDF/صورة -->
             <div class="modal-actions" id="downloadActions">
                 <button class="btn-modal btn-save-image" onclick="saveAsImage()">
                     <i class="fas fa-image"></i> حفظ كصورة
@@ -502,7 +485,6 @@
             const spinner = document.getElementById('loadingSpinner');
             const btnText = document.getElementById('btnText');
             
-            // التحقق من صحة الحقول
             const requiredFields = [
                 'marketingSite', 'marketerName', 'agricultureBook', 
                 'bookDate', 'carNumber', 'driverName', 'carType', 'bookingDate'
@@ -524,7 +506,6 @@
                 return;
             }
             
-            // التحقق من السعة
             const site = siteSelect.value;
             const date = dateSelect.value;
             const currentCount = await getCurrentCount(date, site);
@@ -534,16 +515,13 @@
                 return;
             }
             
-            // إظهار حالة التحميل
             submitBtn.disabled = true;
             spinner.style.display = 'inline-block';
             btnText.textContent = 'جاري الحجز...';
             
             try {
-                // إنشاء رقم الحجز
                 const bookingId = 'BK' + Date.now() + Math.floor(Math.random() * 1000);
                 
-                // تحضير بيانات الحجز
                 const bookingData = {
                     bookingId: bookingId,
                     site: site,
@@ -557,14 +535,11 @@
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 };
                 
-                // حفظ البيانات في Firebase
                 await db.ref(`bookings/${bookingId}`).set(bookingData);
                 
-                // تحديث العداد
                 const newCount = currentCount + 1;
                 await db.ref(`counters/${site}/${date}`).set(newCount);
                 
-                // عرض النتيجة
                 currentBookingData = bookingData;
                 showSuccessModal(bookingData);
                 
@@ -572,7 +547,6 @@
                 console.error('Error submitting booking:', error);
                 alert('حدث خطأ أثناء الحجز. يرجى المحاولة مرة أخرى.');
             } finally {
-                // إعادة تعيين حالة الزر
                 submitBtn.disabled = false;
                 spinner.style.display = 'none';
                 btnText.textContent = 'تأكيد الحجز';
@@ -580,7 +554,6 @@
         }
 
         function showSuccessModal(bookingData) {
-            // تعبئة البيانات في المودال
             document.getElementById('refNumberDisplay').textContent = bookingData.bookingId;
             
             const detailsContent = document.getElementById('bookingDetailsContent');
@@ -596,24 +569,19 @@
                 <p><strong>وقت الحجز:</strong> ${new Date().toLocaleString('ar-SA')}</p>
             `;
             
-            // إظهار المودال
             document.getElementById('successModal').style.display = 'flex';
         }
 
         function closeModal() {
             document.getElementById('successModal').style.display = 'none';
-            
-            // إعادة تعيين النموذج
             document.getElementById('bookingForm').reset();
             document.getElementById('capacityStatus').style.display = 'none';
         }
 
-        // ===== دالة حفظ كصورة =====
         function saveAsImage() {
             const element = document.querySelector('.modal-content');
             const buttons = document.getElementById('downloadActions');
             
-            // إخفاء الأزرار مؤقتاً
             buttons.style.visibility = 'hidden';
             
             html2canvas(element, {
@@ -624,23 +592,19 @@
                 windowWidth: element.scrollWidth,
                 windowHeight: element.scrollHeight,
                 onclone: function(clonedDoc) {
-                    // إخفاء الأزرار في النسخة المستنسخة
                     const clonedButtons = clonedDoc.getElementById('downloadActions');
                     if (clonedButtons) {
                         clonedButtons.style.display = 'none';
                     }
                 }
             }).then(canvas => {
-                // تحويل Canvas إلى صورة
                 const image = canvas.toDataURL('image/png', 1.0);
                 
-                // إنشاء رابط للتحميل
                 const link = document.createElement('a');
                 link.download = `حجز_${currentBookingData.bookingDate}_${currentBookingData.bookingId}.png`;
                 link.href = image;
                 link.click();
                 
-                // إعادة إظهار الأزرار
                 buttons.style.visibility = 'visible';
             }).catch(error => {
                 console.error('Error generating image:', error);
@@ -649,12 +613,10 @@
             });
         }
 
-        // ===== دالة حفظ كملف PDF (المُحسنة) =====
         function saveAsPDF() {
             const element = document.querySelector('.modal-content');
             const buttons = document.getElementById('downloadActions');
             
-            // 1. إخفاء الأزرار مؤقتاً في نسخة المستخدم فقط
             buttons.style.visibility = 'hidden';
             
             const opt = {
@@ -673,18 +635,16 @@
                     scrollY: 0,
                     backgroundColor: '#ffffff',
                     onclone: function(clonedDoc) {
-                        // هذه النسخة المستنسخة فقط للتحويل، لا تؤثر على العرض للمستخدم
                         const clonedButtons = clonedDoc.getElementById('downloadActions');
                         if (clonedButtons) {
                             clonedButtons.style.display = 'none';
                         }
-                        // تأكد من ظهور كافة المحتويات
+                        
                         const clonedContent = clonedDoc.querySelector('.modal-content');
                         clonedContent.style.width = '100%';
                         clonedContent.style.maxWidth = '500px';
                         clonedContent.style.overflow = 'visible';
                         
-                        // تحسين عرض التفاصيل
                         const details = clonedDoc.querySelector('.booking-details');
                         if (details) {
                             details.style.fontSize = '16px';
@@ -699,7 +659,6 @@
                 }
             };
 
-            // 3. استخدام html2pdf مع معالجة الأخطاء
             html2pdf().set(opt).from(element).save()
                 .then(() => {
                     console.log('PDF generated successfully');
@@ -709,35 +668,9 @@
                     alert('حدث خطأ أثناء إنشاء ملف PDF. يرجى المحاولة مرة أخرى.');
                 })
                 .finally(() => {
-                    // 4. إعادة إظهار الأزرار بعد الانتهاء
                     buttons.style.visibility = 'visible';
                 });
         }
     </script>
 </body>
 </html>
-```
-
-📝 ملخص التعديلات الرئيسية:
-
-1. إكمال جميع الدوال الناقصة - تمت كتابة جميع الدوال بشكل كامل
-2. إضافة دالة saveAsImage للتحويل إلى صورة
-3. تحسين دالة saveAsPDF:
-   · استخدام visibility: 'hidden' بدلاً من display: 'none'
-   · إضافة onclone لإخفاء الأزرار في النسخة المستنسخة فقط
-   · معالجة الأخطاء بشكل أفضل
-4. إضافة تحسينات CSS للطباعة والتحويل
-5. إكمال معالجة النموذج والاتصال بـ Firebase
-6. إضافة مكتبة Font Awesome للأيقونات
-7. تحسين تجربة المستخدم مع رسائل تحميل ومعالجة أخطاء
-
-⚙️ التعليمات بعد الرفع:
-
-1. تأكد من أن Firebase مشروعك مفعل في لوحة تحكم Firebase
-2. اختبر النظام بحجز تجريبي للتأكد من عمل كل شيء
-3. إذا واجهت أي مشاكل في التحويل إلى PDF، تأكد من:
-   · اتصال الإنترنت يعمل
-   · مكتبات JavaScript محملة بشكل صحيح
-   · لا توجد حظر للملفات بواسطة مانع الإعلانات
-
-الملف الآن جاهز للرفع واستخدامه مباشرة!
