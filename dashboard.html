@@ -6,9 +6,11 @@
     <title>لوحة التحكم والإدارة</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- مكتبة html2pdf للتحويل -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary-color: #1976D2; --danger-color: #d32f2f; --success-color: #2e7d32; --bg-color: #f4f6f8; }
+        :root { --primary-color: #1976D2; --danger-color: #d32f2f; --success-color: #2e7d32; --bg-color: #f4f6f8; --export-color: #217346; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg-color); color: #333; padding: 20px; }
 
@@ -39,29 +41,36 @@
         .filter-group { flex: 1; min-width: 150px; }
         .filter-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; }
         .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .filter-group label { color: #555; }
 
         /* الجدول */
+        .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { padding: 10px; text-align: right; border-bottom: 1px solid #ddd; }
-        th { background: var(--primary-color); color: white; }
+        th, td { padding: 10px; text-align: right; border-bottom:1px solid #ddd; }
+        th { background: var(--primary-color); color: white; white-space: nowrap; }
         tr:hover { background: #e3f2fd; }
+
+        /* أزرار الإجراءات */
+        .actions-row { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 10px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
+        .btn-print { background: #333; }
+        .btn-pdf { background: #d32f2f; }
+        .btn-export { background: var(--export-color); }
 
         /* إعدادات النظام */
         .settings-panel { display: none; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
         .settings-panel.active { display: block; }
         .setting-item { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
         .setting-item h3 { margin-bottom: 10px; color: var(--primary-color); }
-        
-        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
-        .btn-primary { background: var(--primary-color); }
-        .btn-success { background: var(--success-color); }
-        .btn-export { background: #217346; }
 
+        /* تنسيق الطباعة */
         @media print {
-            .login-screen, .filters, .btn, .tabs, .header { display: none !important; }
-            .dashboard-container { box-shadow: none; width: 100%; }
-            table { border: 1px solid #000; }
-            th, td { border: 1px solid #000; }
+            .login-screen, .filters, .btn, .tabs, .header, .settings-panel { display: none !important; }
+            .dashboard-container { box-shadow: none; width: 100%; margin: 0; padding: 0; }
+            .table-responsive { overflow: visible; }
+            table { border: 1px solid #000; font-size: 10px; }
+            th, td { border: 1px solid #000; color: #000; padding: 5px; }
+            th { background: #ddd !important; -webkit-print-color-adjust: exact; }
             body { background: white; padding: 0; }
         }
     </style>
@@ -73,7 +82,7 @@
         <div class="login-box">
             <h2><i class="fas fa-lock"></i> دخول المسؤول</h2>
             <input type="password" id="passwordInput" placeholder="أدخل كلمة المرور">
-            <button class="btn btn-primary" style="width:100%" onclick="checkLogin()">دخول</button>
+            <button class="btn" style="background:var(--primary-color); width:100%" onclick="checkLogin()">دخول</button>
         </div>
     </div>
 
@@ -113,18 +122,26 @@
                 </div>
                 <div class="filter-group"><label>اسم المسوق</label><input type="text" id="filterName" placeholder="بحث باسم المسوق..."></div>
                 
-                <div class="filter-group" style="display:flex; align-items:flex-end; gap:10px;">
-                    <button class="btn btn-primary" onclick="fetchBookings()">بحث</button>
-                    <button class="btn btn-export" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> Excel</button>
+                <div class="filter-group" style="display:flex; align-items:flex-end;">
+                    <button class="btn" style="background:var(--primary-color); width:100%" onclick="fetchBookings()">بحث</button>
                 </div>
             </div>
 
-            <table>
-                <thead><tr><th>رقم الحجز</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>السيارة</th><th>السائق</th></tr></thead>
-                <tbody id="bookingsBody">
-                    <tr><td colspan="6" style="text-align:center; color:#888;">حدد التواريخ واضغط بحث</td></tr>
-                </tbody>
-            </table>
+            <!-- أزرار التصدير والطباعة -->
+            <div class="actions-row">
+                <button class="btn btn-print" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+                <button class="btn btn-pdf" onclick="downloadTablePDF()"><i class="fas fa-file-pdf"></i> تحميل PDF</button>
+                <button class="btn btn-export" onclick="exportToCSV()"><i class="fas fa-file-excel"></i> تصدير Excel</button>
+            </div>
+
+            <div class="table-responsive" id="printableArea">
+                <table>
+                    <thead><tr><th>رقم الحجز</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>رقم الكتاب</th><th>تاريخ الكتاب</th><th>السيارة</th><th>السائق</th></tr></thead>
+                    <tbody id="bookingsBody">
+                        <tr><td colspan="8" style="text-align:center; color:#888;">حدد التواريخ واضغط بحث</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- محتوى الإعدادات -->
@@ -136,7 +153,7 @@
                 <h3><i class="fas fa-cog"></i> الحد الأقصى للحجوزات (السعة)</h3>
                 <p>العدد الحالي: <strong id="currentLimit">...</strong></p>
                 <input type="number" id="newLimit" style="padding:8px; width:100px; margin-top:10px;" value="100">
-                <button class="btn btn-success" onclick="updateLimit()">تحديث السعة</button>
+                <button class="btn" style="background:var(--success-color); margin-right:10px;" onclick="updateLimit()">تحديث السعة</button>
             </div>
 
             <div class="setting-item">
@@ -146,13 +163,12 @@
                     <input type="date" id="newStartDate" style="padding:8px;"> <label>من</label>
                     <input type="date" id="newEndDate" style="padding:8px;"> <label>إلى</label>
                 </div>
-                <button class="btn btn-primary" style="margin-top:15px;" onclick="updateDateRange()">تحديث التواريخ</button>
+                <button class="btn" style="background:var(--primary-color); margin-top:15px;" onclick="updateDateRange()">تحديث التواريخ</button>
             </div>
         </div>
     </div>
 
     <script>
-        // إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCRyuJulhSxZo9YAfa6jyDzomewt0W9nzM",
             authDomain: "bookingsys-377c4.firebaseapp.com",
@@ -184,7 +200,6 @@
                 if(p.id !== 'bookingsTab') p.style.display = 'none';
                 else if(tabName === 'bookings') p.style.display = 'block';
             });
-            
             if(tabName === 'settings') {
                 document.querySelector('.settings-panel').style.display = 'block';
                 document.getElementById('bookingsTab').style.display = 'none';
@@ -192,7 +207,7 @@
             event.target.classList.add('active');
         }
 
-        // 3. جلب البيانات (محدث لدعم الفترات الزمنية)
+        // 3. جلب البيانات
         async function fetchBookings() {
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
@@ -200,35 +215,28 @@
             const nameFilter = document.getElementById('filterName').value.toLowerCase();
             const tbody = document.getElementById('bookingsBody');
 
-            if (!startDate) {
-                alert("يرجى اختيار 'من تاريخ' على الأقل");
-                return;
-            }
+            if (!startDate) { alert("يرجى اختيار 'من تاريخ' على الأقل"); return; }
 
-            tbody.innerHTML = '<tr><td colspan="6">جاري التحميل...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8">جاري التحميل...</td></tr>';
             let allBookings = [];
 
             try {
                 let ref = db.ref('bookings');
 
-                // تحديد نوع الاستعلام: يوم واحد أم فترة
                 if (startDate && endDate) {
-                    // بحث في فترة زمنية
                     ref = ref.orderByKey().startAt(startDate).endAt(endDate);
                     const snapshot = await ref.once('value');
-
                     if (snapshot.exists()) {
                         snapshot.forEach(dateSnapshot => {
-                            const dateKey = dateSnapshot.key; // التاريخ
+                            const dateKey = dateSnapshot.key;
                             dateSnapshot.forEach(bookingSnapshot => {
                                 let data = bookingSnapshot.val();
-                                data.date = dateKey; // تعيين التاريخ لكل حجز
+                                data.date = dateKey;
                                 allBookings.push(data);
                             });
                         });
                     }
                 } else {
-                    // بحث في يوم واحد
                     const snapshot = await ref.child(startDate).once('value');
                     if (snapshot.exists()) {
                         snapshot.forEach(childSnapshot => {
@@ -239,58 +247,65 @@
                     }
                 }
 
-                // تفريغ الجدول
                 tbody.innerHTML = '';
+                if (allBookings.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد حجوزات في الفترة المحددة</td></tr>'; return; }
 
-                if (allBookings.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">لا توجد حجوزات في الفترة المحددة</td></tr>';
-                    return;
-                }
-
-                // الترتيب: حسب التاريخ أولاً، ثم حسب رقم الحجز
+                // ترتيب: حسب التاريخ ثم رقم الحجز
                 allBookings.sort((a, b) => {
                     if (a.date !== b.date) return a.date.localeCompare(b.date);
                     return a.bookingId - b.bookingId;
                 });
 
-                // تطبيق الفلاتر وعرض البيانات
                 let hasData = false;
                 allBookings.forEach(booking => {
-                    // فلترة الموقع
                     if (siteFilter && booking.site !== siteFilter) return;
-                    // فلترة الاسم
                     if (nameFilter && (!booking.marketer || !booking.marketer.toLowerCase().includes(nameFilter))) return;
 
                     hasData = true;
-                    const row = document.createElement('tr');
+                    // تحويل تاريخ الكتاب للعرض yyyy/MM/dd
+                    const formattedBookDate = booking.bookDate ? booking.bookDate.replace(/-/g, '/') : '-';
                     
+                    const row = document.createElement('tr');
                     row.innerHTML = `
                         <td><strong>${booking.bookingId}</strong></td>
                         <td>${booking.site}</td>
                         <td>${booking.date}</td>
                         <td>${booking.marketer || '-'}</td>
+                        <td>${booking.agBook}</td>
+                        <td>${formattedBookDate}</td>
                         <td>${booking.carNum}</td>
                         <td>${booking.driver}</td>
                     `;
                     tbody.appendChild(row);
                 });
 
-                if (!hasData) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">لا توجد نتائج تطابق الفلاتر</td></tr>';
-                }
+                if (!hasData) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد نتائج تطابق الفلاتر</td></tr>';
 
             } catch (error) {
                 console.error("Error:", error);
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">حدث خطأ في الاتصال</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:red;">حدث خطأ في الاتصال</td></tr>';
             }
         }
 
-        // 4. تصدير CSV
+        // 4. تصدير PDF
+        function downloadTablePDF() {
+            const element = document.getElementById('printableArea');
+            const opt = {
+                margin: 0.5, // بوصة
+                filename: `تقرير_حجوزات_${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } // عرضي لجدول أوسع
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // 5. تصدير CSV
         function exportToCSV() {
             let csv = [];
-            let rows = document.querySelectorAll("table tr");
+            let rows = document.querySelectorAll("#bookingsBody tr");
             for (let i = 0; i < rows.length; i++) {
-                let row = [], cols = rows[i].querySelectorAll("td, th");
+                let row = [], cols = rows[i].querySelectorAll("td");
                 for (let j = 0; j < cols.length; j++) 
                     row.push('"' + cols[j].innerText + '"');
                 csv.push(row.join(","));
@@ -308,7 +323,7 @@
             downloadLink.click();
         }
 
-        // 5. تحميل وتحديث الإعدادات
+        // 6. الإعدادات
         async function loadConfig() {
             const limitSnap = await db.ref('config/maxBookings').once('value');
             const limit = limitSnap.val() || 100;
