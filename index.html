@@ -41,11 +41,7 @@
             color: black;
             border: 2px solid #2e7d32; /* إطار ملون */
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        
-        /* حاوية محتوى التذكرة التي سيتم التقاطها */
-        .ticket-wrapper {
-            background: white;
+            position: relative;
         }
         
         .modal-icon { width: 80px; height: 80px; background: #e8f5e9; color: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; border: 4px solid var(--primary-color); }
@@ -60,7 +56,7 @@
             line-height: 1.8;
         }
         .booking-details p {
-            border-bottom: 1px solid #eee;
+            border-bottom:1px solid #eee;
             padding: 5px 0;
             color: #444;
         }
@@ -79,8 +75,8 @@
 </head>
 <body>
     <div class="container">
-      <h1>الشركة العامة لتجارة الحبوب/  فرع الانبار</h1>
-            <h1>نظام الحجز المسبق ومواعيد التسويق لعام 2026</h1>    
+       <h1>الشركة العامة لتجارة الحبوب/  فرع الانبار</h1>
+            <h1>نظام الحجز المسبق ومواعيد التسويق لعام 2026</h1>   
             <p>يرجى ملء البيانات بدقة</p></header>
         <form id="bookingForm" novalidate>
             <div class="form-group">
@@ -126,21 +122,19 @@
     </div>
 
     <div class="modal-overlay" id="successModal">
+        <!-- محتوى المودال الكامل (سيتم التقاطه كصورة و pdf) -->
         <div class="modal-content">
-            <!-- الحاوية التي سيتم حفظها/تحويلها -->
-            <div id="ticketElement" class="ticket-wrapper">
-                <div class="modal-icon">✓</div>
-                <h2 style="color:var(--primary-color); margin-bottom:5px;">تم الحجز بنجاح</h2>
-                
-                <!-- رقم الحجز يظهر أولاً بشكل مميز -->
-                <label style="font-size:16px; color:#666; font-weight:normal;">رقم الحجز:</label>
-                <span id="refNumberDisplay" class="ref-number">00</span>
-
-                <div class="booking-details" id="bookingDetailsContent"></div>
-            </div>
+            <div class="modal-icon">✓</div>
+            <h2 style="color:var(--primary-color); margin-bottom:5px;">تم الحجز بنجاح</h2>
             
-            <!-- الأزرار خارج منطقة الالتقاط (باستخدام data-html2canvas-ignore) -->
-            <div class="modal-actions" data-html2canvas-ignore="true">
+            <!-- رقم الحجز يظهر أولاً بشكل مميز -->
+            <label style="font-size:16px; color:#666; font-weight:normal;">رقم الحجز:</label>
+            <span id="refNumberDisplay" class="ref-number">00</span>
+
+            <div class="booking-details" id="bookingDetailsContent"></div>
+            
+            <!-- الأزرار تظهر للمستخدم ولكن لن يتم تحويلها للـ PDF/صورة -->
+            <div class="modal-actions" id="downloadActions">
                 <button class="btn-modal btn-save-image" onclick="saveAsImage()">
                     <i class="fas fa-image"></i> حفظ كصورة
                 </button>
@@ -303,7 +297,7 @@
                     throw new Error(`عذراً، رقم كتاب الزراعة (${data.agBook}) مسجل بالفعل في موقع آخر ليوم ${data.date}.`);
                 }
             }
-            const datesToCheck = getPastDates(data.date, 5);
+            const datesToCheck = getPastDates(data.date,5);
             const promises = datesToCheck.map(d => db.ref('bookings').child(d).once('value'));
             const snapshots = await Promise.all(promises);
             for (let i = 0; i < snapshots.length; i++) {
@@ -352,35 +346,55 @@
         }
 
         // ==========================================
-        // دوال التحميل (صورة و PDF)
+        // دوال التحميل (صورة و PDF) - محدثة لحل مشكلة العرض
         // ==========================================
         
         // 1. حفظ كصورة
         function saveAsImage() {
-            const element = document.getElementById('ticketElement');
+            // الهدف: المودال بالكامل (بما في ذلك الحدود والخلفية)
+            const element = document.querySelector('.modal-content');
+            const buttons = document.getElementById('downloadActions');
+            
+            // إخفاء الأزرار مؤقتاً
+            buttons.style.display = 'none';
+
             html2canvas(element, {
-                scale: 2, // جودة عالية جداً
+                scale: 2, // دقة عالية
                 backgroundColor: "#ffffff",
-                useCORS: true
+                useCORS: true,
+                logging: false
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `حجز_${currentBookingData.date}_${currentBookingData.bookingId}.png`;
                 link.href = canvas.toDataURL();
                 link.click();
+                // إعادة الأزرار
+                buttons.style.display = 'flex';
             });
         }
 
         // 2. حفظ كـ PDF
         function saveAsPDF() {
-            const element = document.getElementById('ticketElement');
+            // الهدف: المودال بالكامل
+            const element = document.querySelector('.modal-content');
+            const buttons = document.getElementById('downloadActions');
+            
+            // إخفاء الأزرار مؤقتاً
+            buttons.style.display = 'none';
+
             const opt = {
-                margin:       [10, 10],
+                margin:       [10, 10], // هوامش صغيرة
                 filename:     `حجز_${currentBookingData.date}_${currentBookingData.bookingId}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-            html2pdf().set(opt).from(element).save();
+
+            // التحويل والحفظ
+            html2pdf().set(opt).from(element).save().then(() => {
+                // إعادة الأزرار بعد اكتمال الحفظ
+                buttons.style.display = 'flex';
+            });
         }
 
         function showToast(msg) { alert(msg); } 
@@ -391,7 +405,7 @@
         }
         
         function showSuccessModal(data, id) {
-            // تحويل تاريخ الكتاب لتنسيق yyyy/MM/dd
+            // تحويل تاريخ الكتاب لتنسيق yyyy/MM/dd للعرض
             const formattedBookDate = data.bookDate ? data.bookDate.replace(/-/g, '/') : '-';
 
             document.getElementById('bookingDetailsContent').innerHTML = `
