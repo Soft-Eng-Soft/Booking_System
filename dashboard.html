@@ -22,7 +22,7 @@
         .tab-btn { padding: 10px 20px; border: none; background: #eee; cursor: pointer; border-radius: 5px; font-weight: bold; }
         .tab-btn.active { background: var(--primary-color); color: white; }
 
-        /* إدارة المواقع (الإعدادات) */
+        /* إدارة المواقع */
         .add-site-box { background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; gap: 10px; align-items: flex-end; }
         .site-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .site-card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: white; position: relative; }
@@ -33,14 +33,14 @@
         .btn-delete-site { position: absolute; top: 10px; left: 10px; color: #999; cursor: pointer; font-size: 18px; }
         .btn-delete-site:hover { color: var(--danger-color); }
 
-        /* العرض */
+        /* الفلاتر والجدول */
         .filters { display: flex; flex-wrap: wrap; gap: 15px; background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; }
         .filter-group { flex: 1; min-width: 150px; }
         .filter-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; }
         .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { padding: 10px; text-align: right; border-bottom:1px solid #ddd; }
+        th, td { padding: 10px; text-align: right; border-bottom: 1px solid #ddd; }
         th { background: var(--primary-color); color: white; white-space: nowrap; }
         tr:hover { background: #e3f2fd; }
 
@@ -55,8 +55,9 @@
         @media print {
             .login-screen, .filters, .btn, .tabs, .header, .add-site-box, .site-cards-grid { display: none !important; }
             .dashboard-container { box-shadow: none; width: 100%; margin: 0; padding: 0; }
-            table { border: 1px solid #000; }
-            th, td { border: 1px solid #000; color: #000; }
+            table { border: 1px solid #000; font-size: 10px; }
+            th, td { border: 1px solid #000; color: #000; padding: 5px; }
+            th { background: #ddd !important; -webkit-print-color-adjust: exact; }
             body { background: white; padding: 0; }
         }
     </style>
@@ -87,7 +88,7 @@
                 <div class="filter-group"><label>من تاريخ</label><input type="date" id="filterStartDate"></div>
                 <div class="filter-group"><label>إلى تاريخ</label><input type="date" id="filterEndDate"></div>
                 <div class="filter-group"><label>الموقع</label>
-                    <select id="filterSite"><option value="">الكل</option></select> <!-- سيتم تعبئته تلقائياً -->
+                    <select id="filterSite"><option value="">الكل</option></select>
                 </div>
                 <div class="filter-group"><label>اسم المسوق</label><input type="text" id="filterName" placeholder="بحث باسم المسوق..."></div>
                 <div class="filter-group" style="display:flex; align-items:flex-end; gap:10px;">
@@ -103,13 +104,14 @@
 
             <div class="table-responsive" id="printableArea">
                 <table>
-                    <thead><tr><th>رقم الحجز</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>رقم الكتاب</th><th>تاريخ الكتاب</th><th>السيارة</th><th>السائق</th></tr></thead>
-                    <tbody id="bookingsBody"><tr><td colspan="8" style="text-align:center;">حدد التواريخ واضغط بحث</td></tr></tbody>
+                    <!-- تمت إضافة عمود نوع السيارة -->
+                    <thead><tr><th>رقم الحجز</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>رقم الكتاب</th><th>تاريخ الكتاب</th><th>السيارة</th><th>نوع السيارة</th><th>السائق</th></tr></thead>
+                    <tbody id="bookingsBody"><tr><td colspan="9" style="text-align:center;">حدد التواريخ واضغط بحث</td></tr></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- قسم الإعدادات (إدارة المواقع) -->
+        <!-- قسم الإعدادات -->
         <div id="settingsTab" style="display:none;">
             <div class="add-site-box">
                 <h3 style="flex:1; margin:0;">إضافة موقع جديد</h3>
@@ -117,9 +119,7 @@
                 <button class="btn btn-add" onclick="addNewSite()"><i class="fas fa-plus"></i> إضافة</button>
             </div>
             
-            <div class="site-cards-grid" id="sitesContainer">
-                <!-- سيتم توليد بطاقات المواقع هنا ديناميكياً -->
-            </div>
+            <div class="site-cards-grid" id="sitesContainer"></div>
         </div>
     </div>
 
@@ -136,135 +136,96 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 1. تسجيل الدخول
         function checkLogin() {
             const pass = document.getElementById('passwordInput').value;
             if(pass === "123") {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('dashboardContent').style.display = 'block';
-                loadSites(); // تحميل المواقع بدلاً من الإعدادات العامة
+                loadSites();
                 fetchSitesForFilter();
             } else alert("كلمة المرور خاطئة!");
         }
 
         function showTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.settings-panel, #bookingsTab, #settingsTab').forEach(p => p.style.display = 'none');
-            if(tabName === 'bookings') document.getElementById('bookingsTab').style.display = 'block';
-            if(tabName === 'settings') document.getElementById('settingsTab').style.display = 'block';
+            document.querySelectorAll('.settings-panel, #bookingsTab, #settingsTab').forEach(p => {
+                if(p.id !== 'bookingsTab') p.style.display = 'none';
+                else if(tabName === 'bookings') p.style.display = 'block';
+            });
+            if(tabName === 'settings') {
+                document.querySelector('.site-cards-grid').style.display = 'grid'; // تأكد من ظهور الشبكة
+                document.getElementById('settingsTab').style.display = 'block';
+                document.getElementById('bookingsTab').style.display = 'none';
+            }
             event.target.classList.add('active');
         }
 
-        // ==========================================
-        // 2. إدارة المواقع (جلب وإضافة وتحديث)
-        // ==========================================
-        
-        // إضافة موقع جديد
+        // إدارة المواقع
         async function addNewSite() {
             const name = document.getElementById('newSiteName').value.trim();
             if(!name) return alert("يرجى كتابة اسم الموقع");
-            
-            // إعدادات افتراضية
-            const defaults = {
-                maxLimit: 100,
-                startDate: "2026-05-01",
-                endDate: "2026-05-31"
-            };
-            
+            const defaults = { maxLimit: 100, startDate: "2026-05-01", endDate: "2026-05-31" };
             await db.ref(`sites/${name}`).set(defaults);
             document.getElementById('newSiteName').value = '';
             loadSites();
             fetchSitesForFilter();
-            alert("تمت إضافة الموقع بنجاح");
+            alert("تمت إضافة الموقع");
         }
 
-        // جلب المواقع وعرضها في الإعدادات
         function loadSites() {
             const container = document.getElementById('sitesContainer');
-            container.innerHTML = '<p style="text-align:center;">جاري تحميل المواقع...</p>';
-            
+            container.innerHTML = '';
             db.ref('sites').on('value', snapshot => {
                 container.innerHTML = '';
                 const sites = snapshot.val();
-                if(!sites) { container.innerHTML = '<p style="text-align:center;">لا توجد مواقع مضافة</p>'; return; }
-
+                if(!sites) { container.innerHTML = '<p style="text-align:center;">لا توجد مواقع</p>'; return; }
                 Object.keys(sites).forEach(siteName => {
                     const config = sites[siteName];
-                    
                     const card = document.createElement('div');
                     card.className = 'site-card';
                     card.innerHTML = `
-                        <i class="fas fa-trash btn-delete-site" onclick="deleteSite('${siteName}')" title="حذف الموقع"></i>
+                        <i class="fas fa-trash btn-delete-site" onclick="deleteSite('${siteName}')" title="حذف"></i>
                         <h4>${siteName}</h4>
-                        <div class="site-field">
-                            <label>السعة القصوى (يومي)</label>
-                            <input type="number" id="limit-${siteName.replace(/\s/g, '')}" value="${config.maxLimit || 100}">
-                        </div>
-                        <div class="site-field">
-                            <label>تاريخ بداية الحجز</label>
-                            <input type="date" id="start-${siteName.replace(/\s/g, '')}" value="${config.startDate || ''}">
-                        </div>
-                        <div class="site-field">
-                            <label>تاريخ نهاية الحجز</label>
-                            <input type="date" id="end-${siteName.replace(/\s/g, '')}" value="${config.endDate || ''}">
-                        </div>
-                        <button class="btn btn-save-site" onclick="updateSiteSettings('${siteName}')">
-                            <i class="fas fa-save"></i> حفظ إعدادات الموقع
-                        </button>
+                        <div class="site-field"><label>السعة القصوى</label><input type="number" id="limit-${siteName.replace(/\s/g, '')}" value="${config.maxLimit || 100}"></div>
+                        <div class="site-field"><label>تاريخ البداية</label><input type="date" id="start-${siteName.replace(/\s/g, '')}" value="${config.startDate || ''}"></div>
+                        <div class="site-field"><label>تاريخ النهاية</label><input type="date" id="end-${siteName.replace(/\s/g, '')}" value="${config.endDate || ''}"></div>
+                        <button class="btn btn-save-site" onclick="updateSiteSettings('${siteName}')">حفظ</button>
                     `;
                     container.appendChild(card);
                 });
             });
         }
 
-        // تحديث إعدادات موقع معين
         async function updateSiteSettings(siteName) {
             const cleanName = siteName.replace(/\s/g, '');
             const newLimit = document.getElementById(`limit-${cleanName}`).value;
             const newStart = document.getElementById(`start-${cleanName}`).value;
             const newEnd = document.getElementById(`end-${cleanName}`).value;
-
-            if(!newStart || !newEnd) { alert("يرجى تحديد التواريخ"); return; }
-
-            await db.ref(`sites/${siteName}`).update({
-                maxLimit: Number(newLimit),
-                startDate: newStart,
-                endDate: newEnd
-            });
-            alert("تم تحديث إعدادات الموقع");
+            if(!newStart || !newEnd) return alert("يرجى تحديد التواريخ");
+            await db.ref(`sites/${siteName}`).update({ maxLimit: Number(newLimit), startDate: newStart, endDate: newEnd });
+            alert("تم التحديث");
         }
 
-        // حذف موقع
         async function deleteSite(siteName) {
-            if(confirm(`هل أنت متأكد من حذف الموقع "${siteName}"؟ سيتم حذف جميع الإعدادات المرتبطة به.`)) {
-                await db.ref(`sites/${siteName}`).remove();
-            }
+            if(confirm(`حذف الموقع ${siteName}?`)) await db.ref(`sites/${siteName}`).remove();
         }
 
-        // ==========================================
-        // 3. إعداد الفلتر (عرض الحجوزات)
-        // ==========================================
         function fetchSitesForFilter() {
             const select = document.getElementById('filterSite');
-            // احتفظ بالخيار الأول (الكل)
             const allOption = select.firstElementChild;
             select.innerHTML = '';
             select.appendChild(allOption);
-
             db.ref('sites').once('value', snap => {
                 const sites = snap.val();
-                if(sites) {
-                    Object.keys(sites).forEach(name => {
-                        const opt = document.createElement('option');
-                        opt.value = name;
-                        opt.textContent = name;
-                        select.appendChild(opt);
-                    });
-                }
+                if(sites) Object.keys(sites).forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name; opt.textContent = name;
+                    select.appendChild(opt);
+                });
             });
         }
 
-        // جلب البيانات (نفس السابق تقريباً)
+        // جلب البيانات وتحديث العمود الجديد
         async function fetchBookings() {
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
@@ -272,8 +233,8 @@
             const nameFilter = document.getElementById('filterName').value.toLowerCase();
             const tbody = document.getElementById('bookingsBody');
 
-            if (!startDate) { alert("يرجى اختيار 'من تاريخ' على الأقل"); return; }
-            tbody.innerHTML = '<tr><td colspan="8">جاري التحميل...</td></tr>';
+            if (!startDate) { alert("يرجى اختيار 'من تاريخ'"); return; }
+            tbody.innerHTML = '<tr><td colspan="9">جاري التحميل...</td></tr>';
             let allBookings = [];
 
             try {
@@ -302,31 +263,48 @@
                     }
                 }
                 tbody.innerHTML = '';
-                if (allBookings.length === 0) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">لا توجد بيانات</td></tr>'; return; }
+                if (allBookings.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">لا توجد بيانات</td></tr>'; return; }
                 allBookings.sort((a,b) => { if (a.date !== b.date) return a.date.localeCompare(b.date); return a.bookingId - b.bookingId; });
-                
+
                 allBookings.forEach(booking => {
                     if (siteFilter && booking.site !== siteFilter) return;
                     if (nameFilter && (!booking.marketer || !booking.marketer.toLowerCase().includes(nameFilter))) return;
+                    
                     const formattedBookDate = booking.bookDate ? booking.bookDate.replace(/-/g, '/') : '-';
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td><b>${booking.bookingId}</b></td><td>${booking.site}</td><td>${booking.date}</td><td>${booking.marketer || '-'}</td><td>${booking.agBook}</td><td>${formattedBookDate}</td><td>${booking.carNum}</td><td>${booking.driver}</td>`;
+                    
+                    // إضافة عمود نوع السيارة (booking.carType)
+                    row.innerHTML = `
+                        <td><b>${booking.bookingId}</b></td>
+                        <td>${booking.site}</td>
+                        <td>${booking.date}</td>
+                        <td>${booking.marketer || '-'}</td>
+                        <td>${booking.agBook}</td>
+                        <td>${formattedBookDate}</td>
+                        <td>${booking.carNum}</td>
+                        <td>${booking.carType || '-'}</td>
+                        <td>${booking.driver}</td>
+                    `;
                     tbody.appendChild(row);
                 });
-            } catch (error) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">خطأ</td></tr>'; }
+
+                if (tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">لا توجد نتائج</td></tr>';
+
+            } catch (error) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">خطأ</td></tr>'; }
         }
 
         function downloadTablePDF() {
             const element = document.getElementById('printableArea');
-            const opt = { margin:0.5, filename: `report_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } };
+            const opt = { margin: 0.5, filename: `تقرير_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } };
             html2pdf().set(opt).from(element).save();
         }
 
         function exportToCSV() {
             let csv = [], rows = document.querySelectorAll("#bookingsBody tr");
-            for (let i=0; i<rows.length; i++) {
+            for (let i = 0; i < rows.length; i++) {
                 let row = [], cols = rows[i].querySelectorAll("td");
-                for (let j=0; j<cols.length; j++) row.push('"' + cols[j].innerText + '"');
+                for (let j = 0; j < cols.length; j++) 
+                    row.push('"' + cols[j].innerText + '"');
                 csv.push(row.join(","));
             }
             let csvFile = new Blob(["\ufeff"+csv.join("\n")], {type: "text/csv;charset=utf-8;"}), downloadLink = document.createElement("a");
