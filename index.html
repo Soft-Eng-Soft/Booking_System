@@ -3,19 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الحجز المسبق ومواعيد التسويق لعام 2026</title>
+    <title>نظام الحجز</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        /* نفس التنسيقات */
         :root { --primary-color: #2e7d32; --text-color: #333; --error-color: #d32f2f; --disabled-color: #bdbdbd; --shadow: 0 4px 6px rgba(0,0,0,0.1); --radius: 8px; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #e8f5e9; color: var(--text-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: var(--radius); box-shadow: var(--shadow); border-top:5px solid var(--primary-color); }
-        header { text-align: center; margin-bottom: 30px; }
-        h1 { color: var(--primary-color); margin-bottom: 10px; font-size: 24px; }
+        body { background-color: #e8f5e9; color: var(--text-color); padding: 20px; }
+        
+        /* تنسيق الشعارات في الأعلى */
+        .branch-header {
+            max-width: 600px; margin: 0 auto 20px auto; text-align: center; background: white; padding: 20px; border-radius: var(--radius); border-top: 5px solid var(--primary-color);
+        }
+        .branch-header h1 { color: var(--primary-color); font-size: 18px; margin: 5px 0; }
+        .branch-header h2 { color: #555; font-size: 24px; margin: 10px 0; }
+
+        .container { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: var(--radius); box-shadow: var(--shadow); border-top: 5px solid var(--primary-color); margin: 0 auto; }
+        
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
         input[type="text"], input[type="date"], select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: var(--radius); font-size: 16px; }
@@ -26,12 +32,15 @@
         .capacity-display.full { background: #ffebee; color: var(--error-color); }
         .btn-submit { width: 100%; padding: 14px; background-color: var(--primary-color); color: white; border: none; border-radius: var(--radius); font-size: 18px; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); }
-        .modal-content { background: white; padding: 40px; border-radius: var(--radius); width: 90%; max-width: 500px; text-align: center; color: black; border: 2px solid #2e7d32; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        
+        .modal-content { background: white; padding: 40px; border-radius: var(--radius); width: 90%; max-width: 500px; text-align: center; color: black; border: 2px solid #2e7d32; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
         .modal-icon { width: 80px; height: 80px; background: #e8f5e9; color: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; border: 4px solid var(--primary-color); }
         .ref-number { font-size: 48px; font-weight: 900; color: #d32f2f; margin: 10px 0 20px 0; display: block; border-bottom: 2px dashed #ccc; padding-bottom: 20px; border-top: 2px dashed #ccc; padding-top: 20px; letter-spacing: 2px; }
+        
         .booking-details { text-align: right; background: #fff; padding: 0; font-size: 18px; line-height: 1.8; }
         .booking-details p { border-bottom: 1px solid #eee; padding: 5px 0; color: #444; }
         .booking-details strong { color: #2e7d32; margin-left: 10px; }
+        
         .modal-actions { display: flex; flex-direction: column; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
         .btn-modal { width: 100%; padding: 15px; border: none; border-radius: var(--radius); font-size: 16px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-save-pdf { background-color: #333; color: white; }
@@ -42,10 +51,18 @@
     </style>
 </head>
 <body>
+    <!-- شعارات الفرع -->
+    <div class="branch-header" id="branchHeader" style="display:none;">
+        <h1 id="headerCompanyName"></h1>
+        <h2 id="headerBranchName"></h2>
+        <h1>نظام الحجز المسبق ومواعيد التسويق لعام 2026</h1>
+    </div>
+
     <div class="container">
-      <h1>الشركة العامة لتجارة الحبوب/  فرع الانبار</h1>
-            <h1>نظام الحجز المسبق ومواعيد التسويق لعام 2026</h1>    
-		<p>يرجى ملء البيانات بدقة</p></header>
+        <header style="text-align:center; margin-bottom:30px;">
+            <h1 style="color:var(--primary-color); margin-bottom:10px;">نظام حجز المواعيد التسويقي</h1>
+            <p>يرجى ملء البيانات بدقة</p>
+        </header>
         <form id="bookingForm" novalidate>
             <div class="form-group">
                 <label for="marketingSite">موقع التسويق <span style="color:red">*</span></label>
@@ -61,19 +78,14 @@
             <div class="form-group">
                 <label for="carType">نوع السيارة <span style="color:red">*</span></label>
                 <select id="carType" required>
-                    <option value="تريلا">تريلا</option>
-                    <option value="تريلا - قاطرة ومقطورة">تريلا - قاطرة ومقطورة</option>
-                    <option value="قلاب سكس">قلاب سكس</option>
-                    <option value="قلاب تك">قلاب تك</option>
-                    <option value="نساف">نساف</option>
-                    <option value="كيا حمل">كيا حمل</option>
-
+                    <option value="" disabled selected>اختر النوع...</option>
+                    <!-- سيتم تعبئتها ديناميكياً -->
                 </select>
             </div>
             <div class="form-group">
                 <label for="bookingDate">تاريخ الحجز <span style="color:red">*</span></label>
                 <select id="bookingDate" required onchange="updateCapacityUI()">
-                    <option value="" disabled selected>اختر الموقع أولاً...</option>
+                    <option value="" disabled selected>اختر التاريخ...</option>
                 </select>
                 <div id="capacityStatus" class="capacity-display" style="display:none;"><span id="statusText">الحجوزات:</span><span id="countDisplay">0/-</span></div>
             </div>
@@ -85,18 +97,18 @@
         <div class="modal-content">
             <div class="ticket-wrapper">
                 <div class="modal-icon">✓</div>
-                <h2 style="color:var(--primary-color); margin-bottom:5px;">تم الحجز بنجاح</h2>
+                <!-- اسم الفرع يظهر في الوصل -->
+                <h2 style="color:var(--primary-color); margin-bottom:5px;" id="modalBranchName"></h2>
+                <h3 style="color: #333; margin-bottom: 10px;">تم الحجز بنجاح</h3>
+                
                 <label style="font-size:16px; color:#666; font-weight:normal;">رقم الحجز:</label>
                 <span id="refNumberDisplay" class="ref-number">00</span>
+
                 <div class="booking-details" id="bookingDetailsContent"></div>
             </div>
             <div class="modal-actions" id="downloadActions">
-                <button class="btn-modal btn-save-image" onclick="saveAsImage()">
-                    <i class="fas fa-image"></i> حفظ كصورة
-                </button>
-                <button class="btn-modal btn-save-pdf" onclick="saveAsPDF()">
-                    <i class="fas fa-file-pdf"></i> حفظ كملف PDF
-                </button>
+                <button class="btn-modal btn-save-image" onclick="saveAsImage()"><i class="fas fa-image"></i> حفظ كصورة</button>
+                <button class="btn-modal btn-save-pdf" onclick="saveAsPDF()"><i class="fas fa-file-pdf"></i> حفظ كملف PDF</button>
                 <button class="btn-modal btn-close" onclick="closeModal()">إغلاق</button>
             </div>
         </div>
@@ -114,80 +126,91 @@
         };
         const db = firebase.initializeApp(firebaseConfig).database();
 
-        // المتغيرات ستتغير ديناميكياً
         let MAX_BOOKINGS = 100;
-        let currentSiteConfig = null; // سيخزن إعدادات الموقع المختار
         const dateSelect = document.getElementById('bookingDate');
         const siteSelect = document.getElementById('marketingSite');
+        const carTypeSelect = document.getElementById('carType');
         let currentBookingData = {};
+        let branchData = {};
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSites();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadBranchSettings(); // تحميل الشعبة أولاً لعرض السيارات
+            await loadSites();
         });
 
-        // 1. جلب المواقع من قاعدة البيانات
+        async function loadBranchSettings() {
+            const snap = await db.ref('branchSettings').once('value');
+            if(snap.exists()) {
+                branchData = snap.val();
+                
+                // عرض الشعارات في الأعلى
+                document.getElementById('headerCompanyName').textContent = branchData.companyName || '';
+                document.getElementById('headerBranchName').textContent = branchData.branchName || '';
+                document.getElementById('headerBranchName').style.fontSize = '22px';
+                document.getElementById('modalBranchName').textContent = branchData.branchName || '';
+                document.getElementById('branchHeader').style.display = 'block';
+
+                // تعبئة قائمة أنواع السيارات
+                if(branchData.carTypes && branchData.carTypes.length > 0) {
+                    carTypeSelect.innerHTML = '<option value="" disabled selected>اختر النوع...</option>';
+                    branchData.carTypes.forEach(type => {
+                        const opt = document.createElement('option');
+                        opt.value = type; opt.textContent = type;
+                        carTypeSelect.appendChild(opt);
+                    });
+                } else {
+                    carTypeSelect.innerHTML = '<option value="" disabled selected>لا توجد أنواع محددة</option>';
+                }
+            }
+        }
+
         async function loadSites() {
             const snap = await db.ref('sites').once('value');
             const sites = snap.val();
             siteSelect.innerHTML = '<option value="" disabled selected>اختر الموقع...</option>';
-            
             if(sites) {
                 Object.keys(sites).forEach(name => {
                     const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.textContent = name;
+                    opt.value = name; opt.textContent = name;
                     siteSelect.appendChild(opt);
                 });
             } else {
                 const opt = document.createElement('option');
-                opt.disabled = true;
-                opt.textContent = "لا توجد مواقع (يرجى الإضافة من لوحة التحكم)";
+                opt.disabled = true; opt.textContent = "لا توجد مواقع";
                 siteSelect.appendChild(opt);
             }
         }
 
-        // 2. عند تغيير الموقع: تحميل إعدادات هذا الموقع وتحديث قائمة التواريخ
         async function onSiteChange() {
             const siteName = siteSelect.value;
             if(!siteName) return;
-
-            // جلب إعدادات الموقع
             const snap = await db.ref(`sites/${siteName}`).once('value');
             if(snap.exists()) {
                 currentSiteConfig = snap.val();
                 MAX_BOOKINGS = currentSiteConfig.maxLimit || 100;
                 initDates(currentSiteConfig.startDate, currentSiteConfig.endDate);
-            } else {
-                alert("لم يتم العثور على إعدادات لهذا الموقع.");
-            }
+            } else alert("لم يتم العثور على إعدادات لهذا الموقع.");
         }
 
-        // 3. تهيئة التواريخ ديناميكياً حسب إعدادات الموقع
         async function initDates(startDateStr, endDateStr) {
-            // إذا لم توجد تواريخ محددة للموقع، لا تعرض شيئاً
             if(!startDateStr || !endDateStr) {
-                dateSelect.innerHTML = '<option value="" disabled selected>يرجى تعيين تواريخ للموقع من الإعدادات</option>';
+                dateSelect.innerHTML = '<option value="" disabled selected>يرجى تعيين تواريخ من الإعدادات</option>';
                 return;
             }
-
             dateSelect.innerHTML = '<option value="" disabled selected>اختر التاريخ...</option>';
             const startDate = new Date(startDateStr);
             const endDate = new Date(endDateStr);
             let currentDate = startDate;
-            
             while (currentDate <= endDate) {
                 const year = currentDate.getFullYear();
                 const month = String(currentDate.getMonth() + 1).padStart(2, '0');
                 const day = String(currentDate.getDate()).padStart(2, '0');
                 const dateStr = `${year}-${month}-${day}`;
                 const option = document.createElement('option');
-                option.value = dateStr;
-                option.textContent = dateStr;
+                option.value = dateStr; option.textContent = dateStr;
                 dateSelect.appendChild(option);
                 currentDate.setDate(currentDate.getDate() + 1);
             }
-            // إعادة تعيين العداد عند اختيار تاريخ جديد
-            updateCapacityUI();
         }
 
         async function getCurrentCount(date, site) {
@@ -206,15 +229,11 @@
             document.getElementById('countDisplay').textContent = `${count}/${MAX_BOOKINGS}`;
             const btn = document.getElementById('submitBtn');
             if (count >= MAX_BOOKINGS) {
-                statusDiv.classList.add('full');
-                document.getElementById('statusText').textContent = "الموقع ممتلئ:";
-                btn.disabled = true;
-                document.getElementById('btnText').textContent = "الموقع ممتلئ";
+                statusDiv.classList.add('full'); document.getElementById('statusText').textContent = "الموقع ممتلئ:";
+                btn.disabled = true; document.getElementById('btnText').textContent = "الموقع ممتلئ";
             } else {
-                statusDiv.classList.remove('full');
-                document.getElementById('statusText').textContent = "الحجوزات:";
-                btn.disabled = false;
-                document.getElementById('btnText').textContent = "تأكيد الحجز";
+                statusDiv.classList.remove('full'); document.getElementById('statusText').textContent = "الحجوزات:";
+                btn.disabled = false; document.getElementById('btnText').textContent = "تأكيد الحجز";
             }
         }
 
@@ -226,20 +245,10 @@
 
         document.getElementById('bookingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const fields = {
-                'marketingSite': 'الموقع', 'marketerName': 'المسوق',
-                'agricultureBook': 'كتاب الزراعة', 'bookDate': 'تاريخ الكتاب',
-                'carNumber': 'السيارة', 'driverName': 'السائق', 
-                'carType': 'النوع', 'bookingDate': 'التاريخ'
-            };
+            const fields = { 'marketingSite': 'الموقع', 'marketerName': 'المسوق', 'agricultureBook': 'كتاب الزراعة', 'bookDate': 'تاريخ الكتاب', 'carNumber': 'السيارة', 'driverName': 'السائق', 'carType': 'النوع', 'bookingDate': 'التاريخ' };
             for (let key in fields) {
                 const el = document.getElementById(key);
-                if (!el.value || el.value.trim() === "") {
-                    alert(`يرجى تعبئة ${fields[key]}`);
-                    el.classList.add('input-error');
-                    setTimeout(() => el.classList.remove('input-error'), 500);
-                    return;
-                }
+                if (!el.value || el.value.trim() === "") { alert(`يرجى تعبئة ${fields[key]}`); el.classList.add('input-error'); setTimeout(() => el.classList.remove('input-error'), 500); return; }
             }
             const formData = {
                 site: siteSelect.value, marketer: document.getElementById('marketerName').value,
@@ -249,21 +258,14 @@
                 date: dateSelect.value
             };
             setLoading(true);
-
             try {
                 const counterRef = db.ref(`counters/${formData.site}/${formData.date}`);
                 await counterRef.transaction(function(currentCount) {
                     if (currentCount === null) return 1;
                     if (currentCount < MAX_BOOKINGS) return currentCount + 1; return; 
                 }, async function(error, committed, snapshot) {
-                    if (error || !committed) {
-                        if(!error) showToast("الموقع ممتلئ للحد الأقصى!");
-                        setLoading(false);
-                    } else {
-                        const newBookingId = snapshot.val();
-                        await validateAdvancedRules(formData, newBookingId);
-                        checkCarAndSave(formData, newBookingId);
-                    }
+                    if (error || !committed) { if(!error) showToast("الموقع ممتلئ للحد الأقصى!"); setLoading(false); }
+                    else { const newBookingId = snapshot.val(); await validateAdvancedRules(formData, newBookingId); checkCarAndSave(formData, newBookingId); }
                 });
             } catch (error) { setLoading(false); }
         });
@@ -272,13 +274,8 @@
             const daySnap = await db.ref('bookings').child(data.date).once('value');
             if (daySnap.exists()) {
                 let agBookExistsInOtherSite = false;
-                daySnap.forEach(childSnapshot => {
-                    const record = childSnapshot.val();
-                    if (record.agBook === data.agBook) agBookExistsInOtherSite = true;
-                });
-                if (agBookExistsInOtherSite) {
-                    throw new Error(`عذراً، رقم كتاب الزراعة (${data.agBook}) مسجل بالفعل في موقع آخر ليوم ${data.date}.`);
-                }
+                daySnap.forEach(childSnapshot => { if (childSnapshot.val().agBook === data.agBook) agBookExistsInOtherSite = true; });
+                if (agBookExistsInOtherSite) { throw new Error(`عذراً، رقم كتاب الزراعة (${data.agBook}) مسجل بالفعل في موقع آخر ليوم ${data.date}.`); }
             }
             const datesToCheck = getPastDates(data.date,5);
             const promises = datesToCheck.map(d => db.ref('bookings').child(d).once('value'));
@@ -293,9 +290,7 @@
                             foundInHistory = true; foundDate = datesToCheck[i]; return true;
                         }
                     });
-                    if (foundInHistory) {
-                        if(foundDate !== data.date) throw new Error(`لا يمكن الحجز: تم حجز هذا الكتاب مع نفس السيارة بتاريخ ${foundDate}. يلزم فاصل5 أيام.`);
-                    }
+                    if (foundInHistory) { if(foundDate !== data.date) { throw new Error(`لا يمكن الحجز: تم حجز هذا الكتاب مع نفس السيارة بتاريخ ${foundDate}. يلزم فاصل5 أيام.`); } }
                 }
             }
         }
@@ -345,12 +340,8 @@
         function showSuccessModal(data, id) {
             const formattedBookDate = data.bookDate ? data.bookDate.replace(/-/g, '/') : '-';
             document.getElementById('bookingDetailsContent').innerHTML = `
-                <p><strong>الموقع:</strong> ${data.site}</p><p><strong>التاريخ:</strong> ${data.date}</p>
-                <p><strong>المسوق:</strong> ${data.marketer}</p>
-                <p><strong>رقم الكتاب:</strong> ${data.agBook}</p>
-                <p><strong>تاريخ الكتاب:</strong> ${formattedBookDate}</p>
-                <p><strong>السيارة:</strong> ${data.carNum}</p>
-                <p><strong>السائق:</strong> ${data.driver}</p>
+                <p><strong>الموقع:</strong> ${data.site}</p><p><strong>التاريخ:</strong> ${data.date}</p><p><strong>المسوق:</strong> ${data.marketer}</p>
+                <p><strong>رقم الكتاب:</strong> ${data.agBook}</p><p><strong>تاريخ الكتاب:</strong> ${formattedBookDate}</p><p><strong>السيارة:</strong> ${data.carNum}</p><p><strong>السائق:</strong> ${data.driver}</p>
             `;
             document.getElementById('refNumberDisplay').textContent = id;
             document.getElementById('successModal').style.display = 'flex';
