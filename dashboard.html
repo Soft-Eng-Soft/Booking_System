@@ -18,12 +18,17 @@
         
         .dashboard-container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .tab-btn { padding: 10px 20px; border: none; background: #eee; cursor: pointer; border-radius: 5px; font-weight: bold; }
         .tab-btn.active { background: var(--primary-color); color: white; }
 
-        /* إدارة المواقع */
-        .add-site-box { background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; gap: 10px; align-items: flex-end; }
+        /* بطاقات الإعدادات */
+        .settings-section { display: none; background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; }
+        .settings-section.active { display: block; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .full-width { grid-column: span 2; }
+        
         .site-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .site-card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: white; position: relative; }
         .site-card h4 { color: var(--primary-color); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -33,7 +38,14 @@
         .btn-delete-site { position: absolute; top: 10px; left: 10px; color: #999; cursor: pointer; font-size: 18px; }
         .btn-delete-site:hover { color: var(--danger-color); }
 
-        /* الفلاتر والجدول */
+        .car-types-list { margin-top: 15px; }
+        .car-type-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; background: #fff; padding: 5px; border: 1px solid #eee; border-radius: 4px; }
+        .btn-remove-type { color: var(--danger-color); cursor: pointer; font-size: 14px; }
+
+        .add-type-box { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-save { background: var(--success-color); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+        /* العرض */
         .filters { display: flex; flex-wrap: wrap; gap: 15px; background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; }
         .filter-group { flex: 1; min-width: 150px; }
         .filter-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; }
@@ -50,10 +62,9 @@
         .btn-pdf { background: #d32f2f; }
         .btn-export { background: var(--export-color); }
         .btn-add { background: var(--primary-color); }
-        .btn-save-site { background: var(--success-color); width: 100%; margin-top: 10px; }
 
         @media print {
-            .login-screen, .filters, .btn, .tabs, .header, .add-site-box, .site-cards-grid { display: none !important; }
+            .login-screen, .filters, .btn, .tabs, .header, .settings-section { display: none !important; }
             .dashboard-container { box-shadow: none; width: 100%; margin: 0; padding: 0; }
             table { border: 1px solid #000; font-size: 10px; }
             th, td { border: 1px solid #000; color: #000; padding: 5px; }
@@ -79,7 +90,8 @@
 
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('bookings')">عرض الحجوزات</button>
-            <button class="tab-btn" onclick="showTab('settings')">إعدادات النظام (المواقع)</button>
+            <button class="tab-btn" onclick="showTab('sites')">إعدادات المواقع</button>
+            <button class="tab-btn" onclick="showTab('branch')">إعدادات الشعبة (والفرع والسيارات)</button>
         </div>
 
         <!-- قسم العرض -->
@@ -87,13 +99,10 @@
             <div class="filters">
                 <div class="filter-group"><label>من تاريخ</label><input type="date" id="filterStartDate"></div>
                 <div class="filter-group"><label>إلى تاريخ</label><input type="date" id="filterEndDate"></div>
-                <div class="filter-group"><label>الموقع</label>
-                    <select id="filterSite"><option value="">الكل</option></select>
-                </div>
+                <div class="filter-group"><label>الموقع</label><select id="filterSite"><option value="">الكل</option></select></div>
+                <div class="filter-group"><label>نوع السيارة</label><select id="filterCarType"><option value="">الكل</option></select></div> <!-- فلتر جديد -->
                 <div class="filter-group"><label>اسم المسوق</label><input type="text" id="filterName" placeholder="بحث باسم المسوق..."></div>
-                <div class="filter-group" style="display:flex; align-items:flex-end; gap:10px;">
-                    <button class="btn" style="background:var(--primary-color); width:100%" onclick="fetchBookings()">بحث</button>
-                </div>
+                <div class="filter-group" style="display:flex; align-items:flex-end; gap:10px;"><button class="btn" style="background:var(--primary-color); width:100%" onclick="fetchBookings()">بحث</button></div>
             </div>
 
             <div class="actions-row">
@@ -104,22 +113,49 @@
 
             <div class="table-responsive" id="printableArea">
                 <table>
-                    <!-- تمت إضافة عمود نوع السيارة -->
                     <thead><tr><th>رقم الحجز</th><th>الموقع</th><th>التاريخ</th><th>المسوق</th><th>رقم الكتاب</th><th>تاريخ الكتاب</th><th>السيارة</th><th>نوع السيارة</th><th>السائق</th></tr></thead>
-                    <tbody id="bookingsBody"><tr><td colspan="9" style="text-align:center;">حدد التواريخ واضغط بحث</td></tr></tbody>
+                    <tbody id="bookingsBody"><tr><td colspan="10" style="text-align:center;">حدد التواريخ واضغط بحث</td></tr></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- قسم الإعدادات -->
-        <div id="settingsTab" style="display:none;">
-            <div class="add-site-box">
-                <h3 style="flex:1; margin:0;">إضافة موقع جديد</h3>
-                <input type="text" id="newSiteName" placeholder="اسم الموقع الجديد" style="flex:2; padding:10px;">
+        <!-- قسم المواقع -->
+        <div id="sitesTab" class="settings-section">
+            <div class="add-site-box" style="display:flex; gap:10px; align-items:flex-end; background:#e3f2fd; padding:20px; border-radius:8px;">
+                <div style="flex:1"><label>إضافة موقع جديد</label><input type="text" id="newSiteName" placeholder="اسم الموقع" style="width:100%; padding:10px;"></div>
                 <button class="btn btn-add" onclick="addNewSite()"><i class="fas fa-plus"></i> إضافة</button>
             </div>
-            
             <div class="site-cards-grid" id="sitesContainer"></div>
+        </div>
+
+        <!-- قسم الشعبة (الجديد) -->
+        <div id="branchTab" class="settings-section">
+            <h2>إعدادات الشعبة والمركبات</h2>
+            <div class="form-grid">
+                <div class="site-field">
+                    <label>اسم الشركة</label>
+                    <input type="text" id="branchCompanyName" placeholder="مثال: الشركة العامة لتجارة الحبوب">
+                </div>
+                <div class="site-field">
+                    <label>اسم الفرع</label>
+                    <input type="text" id="branchName" placeholder="مثال: فرع بغداد">
+                </div>
+                <div class="site-field full-width">
+                    <label>عنوان الفرع</label>
+                    <input type="text" id="branchAddress" placeholder="مثال: بغداد، الكرادة">
+                </div>
+                <div class="site-field full-width">
+                    <label>أنواع السيارات المتاحة</label>
+                    <div id="carTypesContainer" class="car-types-list"></div>
+                    <div class="add-type-box">
+                        <input type="text" id="newCarTypeInput" placeholder="اسم النوع الجديد" style="flex:2; padding:8px;">
+                        <button class="btn" style="background:var(--primary-color);" onclick="addCarType()"><i class="fas fa-plus"></i> إضافة</button>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-save" onclick="saveBranchSettings()" style="width:100%; font-size:18px; padding:15px;">
+                <i class="fas fa-save"></i> حفظ إعدادات الشعبة
+            </button>
         </div>
     </div>
 
@@ -142,25 +178,22 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('dashboardContent').style.display = 'block';
                 loadSites();
+                loadBranchSettings();
                 fetchSitesForFilter();
+                fetchCarTypesForFilter(); // جلب السيارات للفلتر
             } else alert("كلمة المرور خاطئة!");
         }
 
         function showTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.settings-panel, #bookingsTab, #settingsTab').forEach(p => {
-                if(p.id !== 'bookingsTab') p.style.display = 'none';
-                else if(tabName === 'bookings') p.style.display = 'block';
-            });
-            if(tabName === 'settings') {
-                document.querySelector('.site-cards-grid').style.display = 'grid'; // تأكد من ظهور الشبكة
-                document.getElementById('settingsTab').style.display = 'block';
-                document.getElementById('bookingsTab').style.display = 'none';
-            }
+            document.querySelectorAll('.settings-section, #bookingsTab').forEach(p => p.style.display = 'none');
+            if(tabName === 'bookings') document.getElementById('bookingsTab').style.display = 'block';
+            if(tabName === 'sites') document.getElementById('sitesTab').style.display = 'block';
+            if(tabName === 'branch') document.getElementById('branchTab').style.display = 'block';
             event.target.classList.add('active');
         }
 
-        // إدارة المواقع
+        // 1. إدارة المواقع (كما في السابق)
         async function addNewSite() {
             const name = document.getElementById('newSiteName').value.trim();
             if(!name) return alert("يرجى كتابة اسم الموقع");
@@ -169,16 +202,15 @@
             document.getElementById('newSiteName').value = '';
             loadSites();
             fetchSitesForFilter();
-            alert("تمت إضافة الموقع");
         }
 
         function loadSites() {
             const container = document.getElementById('sitesContainer');
-            container.innerHTML = '';
+            container.innerHTML = '<p style="text-align:center;">جاري تحميل المواقع...</p>';
             db.ref('sites').on('value', snapshot => {
                 container.innerHTML = '';
                 const sites = snapshot.val();
-                if(!sites) { container.innerHTML = '<p style="text-align:center;">لا توجد مواقع</p>'; return; }
+                if(!sites) { container.innerHTML = '<p style="text-align:center;">لا توجد مواقع مضافة</p>'; return; }
                 Object.keys(sites).forEach(siteName => {
                     const config = sites[siteName];
                     const card = document.createElement('div');
@@ -189,7 +221,7 @@
                         <div class="site-field"><label>السعة القصوى</label><input type="number" id="limit-${siteName.replace(/\s/g, '')}" value="${config.maxLimit || 100}"></div>
                         <div class="site-field"><label>تاريخ البداية</label><input type="date" id="start-${siteName.replace(/\s/g, '')}" value="${config.startDate || ''}"></div>
                         <div class="site-field"><label>تاريخ النهاية</label><input type="date" id="end-${siteName.replace(/\s/g, '')}" value="${config.endDate || ''}"></div>
-                        <button class="btn btn-save-site" onclick="updateSiteSettings('${siteName}')">حفظ</button>
+                        <button class="btn-save-site" style="background:var(--success-color); color:white; border:none; border-radius:4px; padding:10px; width:100%; margin-top:10px;" onclick="updateSiteSettings('${siteName}')">حفظ</button>
                     `;
                     container.appendChild(card);
                 });
@@ -203,18 +235,84 @@
             const newEnd = document.getElementById(`end-${cleanName}`).value;
             if(!newStart || !newEnd) return alert("يرجى تحديد التواريخ");
             await db.ref(`sites/${siteName}`).update({ maxLimit: Number(newLimit), startDate: newStart, endDate: newEnd });
-            alert("تم التحديث");
+            alert("تم تحديث إعدادات الموقع");
         }
-
         async function deleteSite(siteName) {
-            if(confirm(`حذف الموقع ${siteName}?`)) await db.ref(`sites/${siteName}`).remove();
+            if(confirm(`هل أنت متأكد من حذف الموقع "${siteName}"؟`)) await db.ref(`sites/${siteName}`).remove();
         }
 
+        // 2. إعدادات الشعبة والسيارات (جديد)
+        async function loadBranchSettings() {
+            const snap = await db.ref('branchSettings').once('value');
+            if(snap.exists()) {
+                const data = snap.val();
+                document.getElementById('branchCompanyName').value = data.companyName || '';
+                document.getElementById('branchName').value = data.branchName || '';
+                document.getElementById('branchAddress').value = data.address || '';
+                if(data.carTypes) renderCarTypes(data.carTypes);
+            }
+        }
+
+        function renderCarTypes(types) {
+            const container = document.getElementById('carTypesContainer');
+            container.innerHTML = '';
+            types.forEach((type, index) => {
+                const div = document.createElement('div');
+                div.className = 'car-type-item';
+                div.innerHTML = `
+                    <span>${type}</span>
+                    <i class="fas fa-times btn-remove-type" onclick="removeCarType(${index})"></i>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addCarType() {
+            const input = document.getElementById('newCarTypeInput');
+            const val = input.value.trim();
+            if(!val) return;
+            const container = document.getElementById('carTypesContainer');
+            // إنشاء عنصر وهمي مؤقت في الواجهة
+            const div = document.createElement('div');
+            div.className = 'car-type-item';
+            div.innerHTML = `<span>${val}</span> <small>(سيتم الحفظ عند الضغط على حفظ)</small>`;
+            container.appendChild(div);
+            input.value = '';
+            // ملاحظة: الحفظ الفعلي يكون في saveBranchSettings، نحن فقط نضيف للواجهة هنا
+        }
+
+        function removeCarType(index) {
+            // إزالة مؤقتة من الواجهة
+            const items = document.querySelectorAll('.car-type-item');
+            if(items[index]) items[index].remove();
+        }
+
+        async function saveBranchSettings() {
+            const companyName = document.getElementById('branchCompanyName').value;
+            const branchName = document.getElementById('branchName').value;
+            const address = document.getElementById('branchAddress').value;
+            
+            // جمع أنواع السيارات من الـ DOM
+            const typeItems = document.querySelectorAll('#carTypesContainer span');
+            const carTypes = [];
+            typeItems.forEach(span => {
+                if(span.innerText && !span.innerText.includes('(سيتم الحفظ')) {
+                    carTypes.push(span.innerText);
+                }
+            });
+
+            if(!companyName || !branchName) return alert("يرجى إدخال اسم الشركة والفرع");
+
+            await db.ref('branchSettings').set({
+                companyName, branchName, address, carTypes
+            });
+            alert("تم حفظ إعدادات الشعبة والسيارات بنجاح");
+        }
+
+        // 3. الفلاتر
         function fetchSitesForFilter() {
             const select = document.getElementById('filterSite');
-            const allOption = select.firstElementChild;
-            select.innerHTML = '';
-            select.appendChild(allOption);
+            select.innerHTML = '<option value="">الكل</option>';
             db.ref('sites').once('value', snap => {
                 const sites = snap.val();
                 if(sites) Object.keys(sites).forEach(name => {
@@ -225,16 +323,30 @@
             });
         }
 
-        // جلب البيانات وتحديث العمود الجديد
+        function fetchCarTypesForFilter() {
+            const select = document.getElementById('filterCarType');
+            select.innerHTML = '<option value="">الكل</option>';
+            db.ref('branchSettings/carTypes').once('value', snap => {
+                const types = snap.val();
+                if(types) types.forEach(type => {
+                    const opt = document.createElement('option');
+                    opt.value = type; opt.textContent = type;
+                    select.appendChild(opt);
+                });
+            });
+        }
+
+        // 4. جلب البيانات (مع عمود نوع السيارة الجديد)
         async function fetchBookings() {
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
             const siteFilter = document.getElementById('filterSite').value;
+            const carTypeFilter = document.getElementById('filterCarType').value;
             const nameFilter = document.getElementById('filterName').value.toLowerCase();
             const tbody = document.getElementById('bookingsBody');
 
-            if (!startDate) { alert("يرجى اختيار 'من تاريخ'"); return; }
-            tbody.innerHTML = '<tr><td colspan="9">جاري التحميل...</td></tr>';
+            if (!startDate) { alert("يرجى اختيار 'من تاريخ' على الأقل"); return; }
+            tbody.innerHTML = '<tr><td colspan="10">جاري التحميل...</td></tr>';
             let allBookings = [];
 
             try {
@@ -263,34 +375,29 @@
                     }
                 }
                 tbody.innerHTML = '';
-                if (allBookings.length === 0) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">لا توجد بيانات</td></tr>'; return; }
+                if (allBookings.length === 0) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">لا توجد بيانات</td></tr>'; return; }
                 allBookings.sort((a,b) => { if (a.date !== b.date) return a.date.localeCompare(b.date); return a.bookingId - b.bookingId; });
 
+                let hasData = false;
                 allBookings.forEach(booking => {
                     if (siteFilter && booking.site !== siteFilter) return;
+                    if (carTypeFilter && booking.carType !== carTypeFilter) return;
                     if (nameFilter && (!booking.marketer || !booking.marketer.toLowerCase().includes(nameFilter))) return;
-                    
+
+                    hasData = true;
                     const formattedBookDate = booking.bookDate ? booking.bookDate.replace(/-/g, '/') : '-';
                     const row = document.createElement('tr');
-                    
-                    // إضافة عمود نوع السيارة (booking.carType)
                     row.innerHTML = `
-                        <td><b>${booking.bookingId}</b></td>
-                        <td>${booking.site}</td>
-                        <td>${booking.date}</td>
-                        <td>${booking.marketer || '-'}</td>
-                        <td>${booking.agBook}</td>
-                        <td>${formattedBookDate}</td>
+                        <td><strong>${booking.bookingId}</strong></td><td>${booking.site}</td><td>${booking.date}</td>
+                        <td>${booking.marketer || '-'}</td><td>${booking.agBook}</td><td>${formattedBookDate}</td>
                         <td>${booking.carNum}</td>
                         <td>${booking.carType || '-'}</td>
                         <td>${booking.driver}</td>
                     `;
                     tbody.appendChild(row);
                 });
-
-                if (tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">لا توجد نتائج</td></tr>';
-
-            } catch (error) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">خطأ</td></tr>'; }
+                if (!hasData) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">لا توجد نتائج تطابق الفلاتر</td></tr>';
+            } catch (error) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;">خطأ</td></tr>'; }
         }
 
         function downloadTablePDF() {
@@ -307,8 +414,11 @@
                     row.push('"' + cols[j].innerText + '"');
                 csv.push(row.join(","));
             }
-            let csvFile = new Blob(["\ufeff"+csv.join("\n")], {type: "text/csv;charset=utf-8;"}), downloadLink = document.createElement("a");
-            downloadLink.download = "bookings.csv"; downloadLink.href = window.URL.createObjectURL(csvFile); downloadLink.click();
+            let csvFile = new Blob(["\ufeff"+csv.join("\n")], {type: "text/csv;charset=utf-8;"});
+            let downloadLink = document.createElement("a");
+            downloadLink.download = "bookings.csv";
+            downloadLink.href = window.URL.createObjectURL(csvFile);
+            downloadLink.click();
         }
     </script>
 </body>
