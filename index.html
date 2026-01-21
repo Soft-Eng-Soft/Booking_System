@@ -47,6 +47,14 @@
         .btn-close { background-color: #eee; color: #555; font-weight: normal; }
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
        
+   .branch-logo {
+            width: 100px;
+            height: 100px;
+            border: 2px solid var(--wheat-color);
+            border-radius: 50%;
+            object-fit: cover;
+            display: none; /* مخفي في البداية */
+        }
 
           /* تأكد من إضافة هذه الأنماط لتحسين ظهور PDF */
         .modal-content {    box-sizing: border-box;}
@@ -105,23 +113,45 @@
         </form>
     </div>
 
+
+    
+   <!-- وصل الحجز -->
     <div class="modal-overlay" id="successModal">
         <div class="modal-content">
+            <!-- الشعار والعنوان في الأعلى -->
             <div class="ticket-wrapper">
-                <div class="modal-icon">✓</div>
-                <!-- اسم الفرع يظهر في الوصل -->
-                <h2 style="color:var(--primary-color); margin-bottom:5px;" id="modalBranchName"></h2>
-                <h3 style="color: #333; margin-bottom: 10px;">تم الحجز بنجاح</h3>
-                
-                <label style="font-size:16px; color:#666; font-weight:normal;">رقم الحجز:</label>
-                <span id="refNumberDisplay" class="ref-number">00</span>
+                <!-- الشعار الإضافي (يظهر في الأعلى فوق العنوان) -->
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="text-align: center; margin-top: 5px;">
+                        <div class="logo-wrapper-small">
+                            <img src="iraqi-grain-logo.png" style="width:80px; height: 80px;">
+                            <div style="text-align:center; margin-top:5px;">
+                                <div style="font-size: 16px; font-weight: bold; color: #003366;">IRAQI GRAIN</div>
+                                <div style="font-size: 12px; color: #003366;">SYSTEM 1939</div>
+                            </div>
+                    <!-- العنوان الفرع -->
+                    <div style="text-align: center;">
+                        <h2 id="modalBranchName">-</h2>
+                        <h3 style="color: var(--text-color); margin-bottom: 10px;">تم الحجز بنجاح</h3>
+                    </div>
+                </div>
 
+                <label style="font-size: 16px; color: #666; font-weight: normal;">رقم الحجز:</label>
+                <span id="refNumberDisplay" class="ref-number">00</span>
+                
+                <!-- تفاصيل الحجز -->
                 <div class="booking-details" id="bookingDetailsContent"></div>
             </div>
+            
             <div class="modal-actions" id="downloadActions">
-                <button class="btn-modal btn-save-image" onclick="saveAsImage()"><i class="fas fa-image"></i> حفظ كصورة</button>
-                <button class="btn-modal btn-save-pdf" onclick="saveAsPDF()"><i class="fas fa-file-pdf"></i> حفظ كملف PDF</button>
-                <button class="btn-modal btn-close" onclick="closeModal()">إغلاق</button>
+                <button class="btn-modal btn-save-image" onclick="saveAsImage()">
+                    <i class="fas fa-camera"></i> حفظ كصورة
+                </button>
+                <button class="btn-modal btn-save-pdf" onclick="saveAsPDF()">
+                    <i class="fas fa-file-pdf"></i> حفظ ملف PDF
+                </button>
+                <button class="btn-modal btn-close" onclick="closeModal()">إغلاق
+                </button>
             </div>
         </div>
     </div>
