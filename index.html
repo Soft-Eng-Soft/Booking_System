@@ -36,7 +36,6 @@
         .modal-content { background: white; padding: 40px; border-radius: var(--radius); width: 90%; max-width: 500px; text-align: center; color: black; border: 2px solid #2e7d32; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
         .modal-icon { width: 80px; height: 80px; background: #e8f5e9; color: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; border: 4px solid var(--primary-color); }
         .ref-number { font-size: 48px; font-weight: 900; color: #d32f2f; margin: 10px 0 20px 0; display: block; border-bottom: 2px dashed #ccc; padding-bottom: 20px; border-top: 2px dashed #ccc; padding-top: 20px; letter-spacing: 2px; }
-        
         .booking-details { text-align: right; background: #fff; padding: 0; font-size: 18px; line-height: 1.8; }
         .booking-details p { border-bottom: 1px solid #eee; padding: 5px 0; color: #444; }
         .booking-details strong { color: #2e7d32; margin-left: 10px; }
@@ -47,6 +46,16 @@
         .btn-save-image { background-color: var(--primary-color); color: white; }
         .btn-close { background-color: #eee; color: #555; font-weight: normal; }
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
+       
+
+          /* تأكد من إضافة هذه الأنماط لتحسين ظهور PDF */
+        .modal-content {    box-sizing: border-box;}
+        .booking-details {display: block !important; visibility: visible !important; opacity: 1 !important;}
+        .booking-details p {display: block !important; visibility: visible !important; page-break-inside: avoid !important; break-inside: avoid !important;}
+        /* لضمان ظهور كل العناصر أثناء التحويل */
+        .modal-content * { max-width: 100% !important; overflow: visible !important;}
+          
+        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -60,7 +69,6 @@
 
     <div class="container">
         <header style="text-align:center; margin-bottom:30px;">
-            <h1 style="color:var(--primary-color); margin-bottom:10px;">نظام حجز المواعيد التسويقي</h1>
             <p>يرجى ملء البيانات بدقة</p>
         </header>
         <form id="bookingForm" novalidate>
@@ -321,14 +329,89 @@
                 buttons.style.display = 'flex';
             });
         }
-
+/*
         function saveAsPDF() {
             const element = document.querySelector('.modal-content');
             const buttons = document.getElementById('downloadActions');
-            buttons.style.display = 'none';
+            buttons.style.display = 'hide';
             const opt = { margin: [10, 10], filename: `حجز_${currentBookingData.date}_${currentBookingData.bookingId}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
             html2pdf().set(opt).from(element).save().then(() => { buttons.style.display = 'flex'; });
         }
+*/
+    
+function saveAsPDF() {
+    const element = document.querySelector('.modal-content');
+    const buttons = document.getElementById('downloadActions');
+    
+    // طريقة أكثر موثوقية باستخدام html2canvas مباشرة
+    buttons.style.display = 'none';
+    
+    // إعدادات محسنة لضمان ظهور كل المحتوى
+    const options = {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: function(clonedDoc) {
+            // إزالة أي قيود على العرض
+            const modalContent = clonedDoc.querySelector('.modal-content');
+            modalContent.style.width = 'auto';
+            modalContent.style.maxWidth = 'none';
+            modalContent.style.overflow = 'visible';
+            
+            // التأكد من ظهور جميع الفقرات
+            const details = clonedDoc.querySelector('.booking-details');
+            if (details) {
+                details.style.cssText = `
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    font-size: 18px !important;
+                    line-height: 1.8 !important;
+                `;
+                
+                // إظهار كل الفقرات
+                details.querySelectorAll('p').forEach(p => {
+                    p.style.cssText = `
+                        display: block !important;
+                        visibility: visible !important;
+                        margin: 10px 0 !important;
+                        padding: 8px 0 !important;
+                    `;
+                });
+            }
+        }
+    };
+    
+    // استخدام html2canvas ثم jsPDF مباشرة
+    html2canvas(element, options).then(canvas => {
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        // حساب أبعاد الصورة لتناسب A4
+        const imgWidth = 190; // A4 width minus margins (210-20)
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        // إضافة الصورة إلى PDF
+        pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
+        
+        // حفظ الملف
+        pdf.save(`حجز_${currentBookingData.date}_${currentBookingData.bookingId}.pdf`);
+        
+        // إعادة إظهار الأزرار
+        buttons.style.display = 'flex';
+        
+    }).catch(error => {
+        console.error('Error generating PDF:', error);
+        alert('حدث خطأ في تحويل المحتوى إلى PDF');
+        buttons.style.display = 'flex';
+    });
+}
 
         function showToast(msg) { alert(msg); } 
         function setLoading(isLoading) {
